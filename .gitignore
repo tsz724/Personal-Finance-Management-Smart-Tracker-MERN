@@ -21,9 +21,6 @@ frontend/yarn-debug.log*
 frontend/yarn-error.log*
 frontend/pnpm-debug.log*
 
-# Optional: ESLint cache
-frontend/.eslintcache
-
 # ==============================
 # Backend (Python / Node / etc.)
 # ==============================
