@@ -32,9 +32,8 @@ exports.registerUser = async (req, res) => {
 
         if (user) {
             res.status(201).json({
-                _id: user._id,
-                name: user.name,
-                email: user.email,
+                id: user._id,
+                user,
                 token: generateToken(user._id),
             });
         } else {
@@ -50,26 +49,27 @@ exports.loginUser = async (req, res) => {
     const { email, password } = req.body;
 
     try {
-        // Validate input
-        if (!email || !password) {
-            return res.status(400).json({ message: 'Please provide all required fields' });
+        //Check if user exists
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid credentials' });
+        }
+        
+        // Compare password
+        const isPasswordValid = await user.matchPassword(password);
+        if (!isPasswordValid) {
+            return res.status(400).json({ message: 'Incorrect email or password' });
         }
 
-        // Check for user email
-        const user = await User.findOne({ email });
-        if (user && (await user.matchPassword(password))) {
-            res.json({
-                _id: user._id,
-                name: user.name,
-                email: user.email,
-                token: generateToken(user._id),
-            });
-        } else {
-            res.status(401).json({ message: 'Invalid email or password' });
-        }
-    } catch (error) {
-        res.status(500).json({ message: 'Server error' });
-    }   
+        res.status(200).json({
+            id: user._id,
+            user,
+            token: generateToken(user._id),
+        });
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ message: "Error logging in", error: err.message });
+    }
 };
 
 //get user profile
