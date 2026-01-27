@@ -9,9 +9,9 @@ import {
 
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import Home from './pages/user/home';
-import Expense from "./pages/user/expense";
-import Income from './pages/user/income';
+import Home from './pages/user/Home';
+import Expense from "./pages/user/Expense";
+import Income from './pages/user/Income';
 import UserProvider from './context/UserContext';
 
 const App = () => {

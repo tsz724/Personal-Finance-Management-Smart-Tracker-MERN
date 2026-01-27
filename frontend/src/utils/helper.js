@@ -7,3 +7,60 @@ export const isStrongPassword = (value, minLength = 8) => {
 	if (!value) return false;
 	return value.length >= minLength;
 }
+
+export const addThousandSeparators = (number) => {
+  if (number == null || isNaN(number)) return "";
+
+  const parts = number.toString().split(".");
+  const integerPart = parts[0];
+  const fractionalPart = parts[1];
+
+  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  
+  return fractionalPart ? `${formattedInteger}.${fractionalPart}` : formattedInteger;
+};
+
+export const getCategoryIcon = (category, type) => {
+  if (type === 'expense') {
+    const categoryMap = {
+      'food': '🍔',
+      'groceries': '🛒',
+      'transportation': '🚗',
+      'shopping': '🛍️',
+      'entertainment': '🎬',
+      'health': '🏥',
+      'education': '📚',
+      'bills': '📄',
+      'rent': '🏠',
+      'utilities': '💡',
+      'travel': '✈️',
+      'gym': '💪',
+      'clothing': '👔',
+      'insurance': '🛡️',
+      'phone': '📱',
+      'internet': '🌐',
+      'subscriptions': '📺',
+      'gifts': '🎁',
+      'other': '💰',
+    };
+    return categoryMap[category?.toLowerCase()] || '💸';
+  } else {
+    const sourceMap = {
+      'salary': '💼',
+      'freelance': '💻',
+      'business': '🏢',
+      'investment': '📈',
+      'bonus': '🎉',
+      'gift': '🎁',
+      'rental': '🏘️',
+      'dividends': '💹',
+      'interest': '🏦',
+      'pension': '👴',
+      'refund': '↩️',
+      'cashback': '💳',
+      'side hustle': '🚀',
+      'other': '💰',
+    };
+    return sourceMap[category?.toLowerCase()] || '💵';
+  }
+}

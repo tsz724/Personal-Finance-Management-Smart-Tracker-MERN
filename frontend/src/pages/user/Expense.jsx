@@ -1,8 +1,13 @@
 import React from 'react'
+import Homelayout from '../../components/layout/Homelayout'
 
 const Expense = () => {
   return (
-    <div>Expense</div>
+    <Homelayout activeMenu="Expense">
+      <div className="my-5 mx-auto">
+        Expense
+      </div>
+    </Homelayout>
   )
 }
 
