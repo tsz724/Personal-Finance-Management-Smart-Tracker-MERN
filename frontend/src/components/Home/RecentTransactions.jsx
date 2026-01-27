@@ -8,15 +8,14 @@ const RecentTransactions = ({ transactions, onSeeMore }) => {
     <div className="card">
         <div className="flex justify-between items-center pt-6 px-6">
             <h5 className="text-lg font-semibold">Recent Transactions</h5>
-          
             <button className="card-btn" onClick={onSeeMore}>
                 See All <LuArrowRight  className="text-base"/>
             </button>
         </div>
-        <div className="mt-6 pl-6 pr-6">
+        <div className="mt-6">
             {transactions?.slice(0,5)?.map((item) => (
                 <TransactionInfoCard
-                    key={item._id || item.id}
+                    key={item._id}
                     title={item.type=='expense'? item.category : item.source}
                     icon={item.icon}
                     amount={item.amount}
@@ -26,9 +25,6 @@ const RecentTransactions = ({ transactions, onSeeMore }) => {
                 />
             ))}
         </div>
-
-        
-      
     </div>
   );
 }

@@ -8,7 +8,7 @@ import InfoCard from '../../components/Card/InfoCard';
 import RecentTransactions from '../../components/Home/RecentTransactions';
 import FinanceOverview from '../../components/Home/FinanceOverview';
 import ExpensesList from '../../components/Home/ExpensesList';
-import Last30daysExpenses from '../../components/Home/Last30daysExpenses';
+import ExpensesLast60days from '../../components/Home/ExpensesLast60days';
 import IncomeLast60Days from '../../components/Home/IncomeLast60Days';
 import IncomeList from '../../components/Home/IncomeList';
 import { IoMdCard } from 'react-icons/io';
@@ -80,21 +80,23 @@ function Home() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+          <IncomeList
+            income={dashboardData?.totalIncomeLast60Days?.transactions || []}
+            onSeeMore={() => navigate('/income')}
+          />
+          <IncomeLast60Days
+            income={dashboardData?.totalIncomeLast60Days?.transactions || []}
+            totalincome={dashboardData?.totalIncomeLast60Days?.total || 0} />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
           <ExpensesList
             expenses={dashboardData?.totalExpensesLast60Days?.transactions || []}
             onSeeMore={() => navigate('/expense')}
           />
-          <Last30daysExpenses
-            expenses={dashboardData?.totalExpensesLast60Days?.transactions || []}
+          <ExpensesLast60days
+            data={dashboardData?.totalExpensesLast60Days?.transactions || []}
           />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          <IncomeList
-            income={dashboardData?.totalIncomeLast60Days}
-            onSeeMore={() => navigate('/income')}
-          />
-          <IncomeLast60Days income={dashboardData?.totalIncomeLast60Days} />
         </div>
       </div>
     </Homelayout>
