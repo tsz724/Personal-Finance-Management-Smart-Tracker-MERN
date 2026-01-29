@@ -8,9 +8,17 @@
    @apply w-full py-3 bg-orange-700 text-white rounded-md font-medium hover:bg-orange-800
 }
 .card{
-  @apply bg-white rounded-lg shadow-gray-100 border border-gray-200/50;
+  @apply bg-white p-6 rounded-lg shadow-md shadow-gray-100 border border-gray-200/50;
 }
 
 .card-btn{
   @apply flex items-center gap-3 text-[12px] font-medium text-gray-700 hover:text-purple-500 bg-gray-50 hover:bg-purple-50 px-4 py-1.5 rounded-lg border border-gray-200/50 cursor-pointer;
+}
+
+.add-btn{
+  @apply flex items-center gap-1.5 text-xs md:text-xs font-medium text-blue-600 whitespace-nowrap bg-blue-50 border-blue-50 rounded-lg px-4 py-2 cursor-pointer;
+}
+
+.add-btn-fill{
+  @apply text-white bg-blue-600
 }
