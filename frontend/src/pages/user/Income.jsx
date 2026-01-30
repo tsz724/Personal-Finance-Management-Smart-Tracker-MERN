@@ -100,7 +100,36 @@ const Income = () => {
   };
 
   // handle download income details
-  const handleDownloadIncomeDetails = async () => {};
+  const handleDownloadIncomeDetails = async () => {
+      try {
+      const response = await axiosInstance.get(
+        API_PATHS.INCOME.DOWNLOAD_EXCEL,
+        { responseType: "blob" }
+      );
+
+      const disposition = response.headers["content-disposition"];
+      let fileName = "income_details.xlsx";
+
+      if (disposition && disposition.includes("filename=")) {
+        fileName = disposition
+          .split("filename=")[1]
+          .replace(/"/g, "");
+      }
+
+      const url = window.URL.createObjectURL(response.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", fileName); 
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error downloading income details:", error);
+      toast.error("Failed to download income details. Please try again.");
+    }
+  };
+  
 
   useEffect(() => {
     fetchIncomeDetails();
@@ -126,7 +155,7 @@ const Income = () => {
             onDownload={handleDownloadIncomeDetails}
           />
         </div>
-        {/* Add Income Modal */}
+      {/* Add Income Modal */}
       <Modal
         isOpen={openAddIncomeModal}
         onClose={() => setOpenAddIncomeModal(false)}

@@ -5,7 +5,7 @@ import Custombarchart from '../Charts/Custombarchart';
 const IncomeOverview = ({ transactions, onAddIncome }) => {
   const [chartData, setChartData] = useState([]);
 
-  const prepareExpenseBarChartData = (rawItems = []) => {
+  const prepareIncomeBarChartData = (rawItems = []) => {
     if (!rawItems || rawItems.length === 0) return;
 
     const groups = rawItems.reduce((acc, item) => {
@@ -27,7 +27,7 @@ const IncomeOverview = ({ transactions, onAddIncome }) => {
   };
 
   useEffect(() => {
-    prepareExpenseBarChartData(transactions);
+    prepareIncomeBarChartData(transactions);
 
     return () => {};
   }, [transactions]);
