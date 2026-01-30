@@ -215,17 +215,21 @@ npm run lint-	Run ESLint
 
 Page	Screenshot
 
-Sign In Page -<img width="1916" height="847" alt="image" src="" />
+## Sign In Page
+<img width="1916" alt="Sign In Page" src="https://raw.githubusercontent.com/premshuksaha/Expensa/main/frontend/screenshots/Login.png" />
 
-Sign Up Page-<img width="1850" height="841" alt="image" src="" />
+## Sign Up Page
+<img width="1916" alt="Sign In Page" src="https://raw.githubusercontent.com/premshuksaha/Expensa/main/frontend/screenshots/Register.png" />
+
+## Home
+<img width="1916" alt="Sign In Page" src="https://raw.githubusercontent.com/premshuksaha/Expensa/main/frontend/screenshots/Home.png" />
+
+## Expense Page
+<img width="1916" alt="Sign In Page" src="https://raw.githubusercontent.com/premshuksaha/Expensa/main/frontend/screenshots/Expense.png" />
+
+## Income Page
+<img width="1916" alt="Sign In Page" src="https://raw.githubusercontent.com/premshuksaha/Expensa/main/frontend/screenshots/Income.png" />
 	
-Dashboard	-<img width="1920" height="1937" alt="" src="" />
-
-Expense Page-<img width="1920" height="1345" alt="image" src="" />
-
-Income Page	-<img width="1920" height="1340" alt="image" src="" />
-
-
 
 🚀 Project Status
 
