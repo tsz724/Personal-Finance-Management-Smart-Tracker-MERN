@@ -50,24 +50,60 @@ exports.deleteExpense = async (req, res) => {
 
 //Download expense data as excel file
 exports.downloadexcel = async (req, res) => {
-    const userId = req.user.id;
-    try {
-        const expenses = await Expense.find({ user: userId }).sort({ createdAt: -1 });
-        
-        //Prepare data for excel
-        const excelData = expenses.map(expense => ({
-            Date: expense.date.toISOString().split('T')[0],
-            Category: expense.category,
-            Amount: expense.amount,
-        }));
+  const userId = req.user.id;
 
-        const wb= XLSX.utils.book_new();
-        const ws= XLSX.utils.json_to_sheet(excelData);
-        XLSX.utils.book_append_sheet(wb, ws, 'Expenses');
-        XLSX.writeFile(wb, 'expenses.xlsx');
-        res.download('expenses.xlsx');
-    } catch (error) {
-        console.error('Error downloading expense excel:', error);
-        res.status(500).json({ message: 'Server error' });
+  try {
+    const expenses = await Expense.find({ user: userId }).sort({ date: -1 });
+
+    const excelData = expenses.map(expense => ({
+      Date: expense.date.toISOString().split("T")[0],
+      Category: expense.category,
+      Amount: expense.amount, 
+    }));
+
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(excelData);
+
+    const range = XLSX.utils.decode_range(ws["!ref"]);
+    for (let row = range.s.r + 1; row <= range.e.r; row++) {
+      const amountCell = ws[XLSX.utils.encode_cell({ r: row, c: 2 })];
+      if (amountCell) {
+        amountCell.t = "n";
+        amountCell.z = '₹#,##0.00';
+      }
     }
+
+    XLSX.utils.book_append_sheet(wb, ws, "Expenses");
+
+    const now = new Date();
+    const date = now.toISOString().split("T")[0];
+    const time = now.toTimeString().slice(0, 5).replace(":", "-");
+    const fileName = `expense_details_${date}_${time}.xlsx`;
+
+
+    const buffer = XLSX.write(wb, {
+      type: "buffer",
+      bookType: "xlsx",
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${fileName}"`
+    );
+
+    res.setHeader(
+      "Access-Control-Expose-Headers",
+      "Content-Disposition"
+    );
+
+    res.send(buffer);
+  } catch (error) {
+    console.error("Error downloading expense excel:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 };

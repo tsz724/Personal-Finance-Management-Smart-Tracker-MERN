@@ -42,26 +42,62 @@ exports.addIncome = async (req, res) => {
 //Download income data as excel file
 exports.downloadexcel = async (req, res) => {
     const userId = req.user.id;
-    try {
-        const incomes = await Income.find({ user: userId }).sort({ date: -1 });
-        
-        //Prepare data for excel
-        const excelData = incomes.map(income => ({
-            Date: income.date.toISOString().split('T')[0],
-            Source: income.source,
-            Amount: income.amount,
+    
+      try {
+        const income = await Income.find({ user: userId }).sort({ date: -1 });
+    
+        const excelData = income.map(income => ({
+          Date: income.date.toISOString().split("T")[0],
+          Source: income.source,
+          Amount: income.amount, 
         }));
-
-        const wb= XLSX.utils.book_new();
-        const ws= XLSX.utils.json_to_sheet(excelData);
-        XLSX.utils.book_append_sheet(wb, ws, 'Incomes');
-        XLSX.writeFile(wb, 'incomes.xlsx');
-        res.download('incomes.xlsx');
-    } catch (error) {
-        console.error('Error downloading income excel:', error);
-        res.status(500).json({ message: 'Server error' });
-    }   
-};
+    
+    
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(excelData);
+    
+        const range = XLSX.utils.decode_range(ws["!ref"]);
+        for (let row = range.s.r + 1; row <= range.e.r; row++) {
+          const amountCell = ws[XLSX.utils.encode_cell({ r: row, c: 2 })];
+          if (amountCell) {
+            amountCell.t = "n";
+            amountCell.z = '₹#,##0.00';
+          }
+        }
+    
+        XLSX.utils.book_append_sheet(wb, ws, "Income");
+    
+        const now = new Date();
+        const date = now.toISOString().split("T")[0];
+        const time = now.toTimeString().slice(0, 5).replace(":", "-");
+        const fileName = `income_details_${date}_${time}.xlsx`;
+    
+    
+        const buffer = XLSX.write(wb, {
+          type: "buffer",
+          bookType: "xlsx",
+        });
+    
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${fileName}"`
+        );
+    
+        res.setHeader(
+          "Access-Control-Expose-Headers",
+          "Content-Disposition"
+        );
+    
+        res.send(buffer);
+      } catch (error) {
+        console.error("Error downloading income excel:", error);
+        res.status(500).json({ message: "Server error" });
+      }
+    };
 
 //Delete income by id
 exports.deleteIncome = async (req, res) => {
