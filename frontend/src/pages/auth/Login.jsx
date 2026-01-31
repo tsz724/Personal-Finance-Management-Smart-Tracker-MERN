@@ -1,5 +1,5 @@
 import React, { useContext } from 'react'
-import Authlayout from '../../components/layout/authlayout'
+import Authlayout from '../../components/layout/Authlayout'
 import {Link,useNavigate } from 'react-router-dom'
 import Input from '../../components/Input/Input'
 import { validateEmail } from '../../utils/helper'
