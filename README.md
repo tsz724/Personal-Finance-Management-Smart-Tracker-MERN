@@ -2,6 +2,18 @@
 
 A modern React-based frontend for the Expense Tracker application built with Vite, Tailwind CSS, and Recharts.
 
+🚀 Project Status
+
+🌐 Deployment:(https://premshuk-expensa.vercel.app/)
+
+🔄 Future Enhancements:
+
+Advanced analytics & charts
+
+Export reports in multiple formats
+
+Improved UI/UX and performance optimizations
+
 
 ## 🚀 Quick Start
 
@@ -230,18 +242,6 @@ Page	Screenshot
 ## Income Page
 <img width="1916" alt="Sign In Page" src="https://raw.githubusercontent.com/premshuksaha/Expensa/main/frontend/screenshots/Income.png" />
 	
-
-🚀 Project Status
-
-🌐 Deployment: Coming Soon
-
-🔄 Future Enhancements:
-
-Advanced analytics & charts
-
-Export reports in multiple formats
-
-Improved UI/UX and performance optimizations
 
 👩‍💻 Author
 
