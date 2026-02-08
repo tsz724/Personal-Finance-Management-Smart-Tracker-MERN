@@ -1,5 +1,8 @@
 const User = require('../models/Users');
 const jwt=require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -54,6 +57,10 @@ exports.loginUser = async (req, res) => {
         if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
+
+        if (user.authProvider === 'google' && !user.password) {
+            return res.status(400).json({ message: 'Please sign in with Google' });
+        }
         
         // Compare password
         const isPasswordValid = await user.matchPassword(password);
@@ -69,6 +76,62 @@ exports.loginUser = async (req, res) => {
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ message: "Error logging in", error: err.message });
+    }
+};
+
+// Google login/register
+exports.googleAuth = async (req, res) => {
+    const { credential } = req.body;
+
+    try {
+        if (!credential) {
+            return res.status(400).json({ message: 'Missing Google credential' });
+        }
+
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+
+        const payload = ticket.getPayload();
+        const { sub: googleId, email, name } = payload || {};
+
+        if (!email) {
+            return res.status(400).json({ message: 'Google account email not available' });
+        }
+
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            user = await User.create({
+                name: name || email.split('@')[0],
+                email,
+                googleId,
+                authProvider: 'google',
+            });
+        } else {
+            let needsSave = false;
+            if (!user.googleId) {
+                user.googleId = googleId;
+                needsSave = true;
+            }
+            if (!user.authProvider) {
+                user.authProvider = 'google';
+                needsSave = true;
+            }
+            if (needsSave) {
+                await user.save();
+            }
+        }
+
+        return res.status(200).json({
+            id: user._id,
+            user,
+            token: generateToken(user._id),
+        });
+    } catch (error) {
+        console.error('Google auth error:', error);
+        return res.status(500).json({ message: 'Google authentication failed' });
     }
 };
 

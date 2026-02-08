@@ -2,6 +2,7 @@ import React,{useContext} from 'react'
 import Authlayout from '../../components/layout/Authlayout'
 import {Link,useNavigate } from 'react-router-dom'
 import Input from '../../components/Input/Input'
+import GoogleAuthButton from '../../components/Auth/GoogleAuthButton'
 import { validateEmail,isStrongPassword } from '../../utils/helper'
 import axiosInstance from '../../utils/axiosInstance'
 import { API_PATHS } from '../../utils/apiPaths'
@@ -63,6 +64,29 @@ const Register = () => {
   
   }
 
+  const handleGoogleAuth = async (credential) => {
+    setError("");
+    try {
+      const response = await axiosInstance.post(API_PATHS.AUTH.GOOGLE, {
+        credential,
+      });
+
+      const { token, user } = response.data;
+
+      if (token) {
+        localStorage.setItem('token', token);
+        updateUser(user);
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.message) {
+        setError(error.response.data.message);
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
+    }
+  }
+
   return (
     <Authlayout>
       <div>
@@ -112,6 +136,14 @@ const Register = () => {
             SIGN IN
             </button>
         </form>
+
+        <div className="my-4 flex items-center gap-3">
+          <span className="h-px flex-1 bg-gray-200" />
+          <span className="text-xs text-gray-500">OR</span>
+          <span className="h-px flex-1 bg-gray-200" />
+        </div>
+
+        <GoogleAuthButton onAuthSuccess={handleGoogleAuth} onAuthError={setError} />
         
         <div className="mt-4 text-center text-sm text-gray-600">
              Already have an account?{"  "}
