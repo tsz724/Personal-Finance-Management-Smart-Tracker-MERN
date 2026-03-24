@@ -70,7 +70,7 @@ exports.downloadexcel = async (req, res) => {
       const amountCell = ws[XLSX.utils.encode_cell({ r: row, c: 2 })];
       if (amountCell) {
         amountCell.t = "n";
-        amountCell.z = '₹#,##0.00';
+        amountCell.z = '$#,##0.00';
       }
     }
 
