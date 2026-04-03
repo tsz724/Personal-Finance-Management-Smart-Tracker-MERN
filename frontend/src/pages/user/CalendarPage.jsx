@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
+import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import moment from 'moment';
 import Homelayout from '../../components/layout/Homelayout';
 import { useUserAuth } from '../../hooks/useUserAuth';
@@ -25,8 +26,10 @@ import Box from '@mui/material/Box';
 import { useTheme } from '@mui/material/styles';
 
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 
 const localizer = momentLocalizer(moment);
+const DnDCalendar = withDragAndDrop(Calendar);
 
 function getFetchRange(date, view) {
   const d = moment(date);
@@ -263,7 +266,62 @@ export default function CalendarPage() {
     openEditDialog(evt);
   }, []);
 
-  const eventStyleGetter = useCallback((event) => ({ style: event.style }), []);
+  const eventStyleGetter = useCallback((event) => ({
+    style: {
+      ...event.style,
+      cursor: 'move',
+    },
+  }), []);
+
+  const updateEventTimes = useCallback(
+    async (rbcEvent, start, end, isAllDay) => {
+      const ev = rbcEvent?.resource || {};
+      const id = ev._id || rbcEvent?.id;
+      if (!id) return;
+
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) return;
+
+      // Backend requires end > start; RBC should provide it, but guard anyway.
+      const normalizedEnd = endDate <= startDate ? new Date(startDate.getTime() + 60 * 60 * 1000) : endDate;
+
+      const payload = {
+        title: String(ev.title || '').trim() || 'Untitled',
+        description: ev.description || '',
+        start: startDate.toISOString(),
+        end: normalizedEnd.toISOString(),
+        allDay: typeof isAllDay === 'boolean' ? isAllDay : !!ev.allDay,
+        location: ev.location || '',
+        eventType: ev.eventType || 'meeting',
+        visibility: ev.visibility || 'personal',
+      };
+
+      try {
+        await axiosInstance.put(API_PATHS.BUSINESS.CALENDAR_EVENT(id), payload);
+        toast.success('Event updated');
+      } catch (e) {
+        toast.error(e.response?.data?.message || 'Could not update event');
+      } finally {
+        load();
+      }
+    },
+    [load]
+  );
+
+  const onEventDrop = useCallback(
+    ({ event, start, end, allDay: isAllDay }) => {
+      updateEventTimes(event, start, end, isAllDay);
+    },
+    [updateEventTimes]
+  );
+
+  const onEventResize = useCallback(
+    ({ event, start, end, allDay: isAllDay }) => {
+      updateEventTimes(event, start, end, isAllDay);
+    },
+    [updateEventTimes]
+  );
 
   return (
     <Homelayout activeMenu="Calendar">
@@ -370,7 +428,7 @@ export default function CalendarPage() {
             },
           }}
         >
-          <Calendar
+          <DnDCalendar
             localizer={localizer}
             events={calendarEvents}
             startAccessor="start"
@@ -385,6 +443,10 @@ export default function CalendarPage() {
             onSelectEvent={onSelectEvent}
             selectable
             popup
+            draggableAccessor={() => true}
+            resizable
+            onEventDrop={onEventDrop}
+            onEventResize={onEventResize}
             step={30}
             timeslots={2}
             showMultiDayTimes
