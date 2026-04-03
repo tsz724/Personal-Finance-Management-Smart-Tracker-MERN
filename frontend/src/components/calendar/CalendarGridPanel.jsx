@@ -111,14 +111,8 @@ export function CalendarGridPanel({
             onSelectEvent={onSelectEvent}
             selectable
             popup
-            draggableAccessor={(e) => {
-              const p = e.resource?.recurrence?.pattern;
-              return !p || p === 'none';
-            }}
-            resizableAccessor={(e) => {
-              const p = e.resource?.recurrence?.pattern;
-              return !p || p === 'none';
-            }}
+            draggableAccessor={() => true}
+            resizableAccessor={() => true}
             resizable
             onEventDrop={onEventDrop}
             onEventResize={onEventResize}

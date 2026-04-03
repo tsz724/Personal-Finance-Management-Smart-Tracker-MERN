@@ -4,6 +4,26 @@ const { expandRecurrence } = require('../utils/recurrenceExpand');
 
 const RECURRING_PATTERNS = ['daily', 'weekly', 'monthly', 'yearly', 'weekdays'];
 
+function baseCloneFields(plain) {
+    return {
+        title: plain.title,
+        description: plain.description || '',
+        organizer: plain.organizer,
+        attendees: Array.isArray(plain.attendees) ? plain.attendees : [],
+        guestEmails: Array.isArray(plain.guestEmails) ? plain.guestEmails : [],
+        meetingLink: plain.meetingLink || '',
+        eventColor: plain.eventColor || '',
+        availability: plain.availability || 'busy',
+        reminderMinutesBefore:
+            typeof plain.reminderMinutesBefore === 'number' ? plain.reminderMinutesBefore : 30,
+        location: plain.location || '',
+        visibility: plain.visibility || 'personal',
+        visibilityKind: plain.visibilityKind || 'default',
+        eventType: plain.eventType || 'meeting',
+        workspace: plain.workspace || null,
+    };
+}
+
 exports.listEvents = async (req, res) => {
     try {
         const { from, to, workspaceId, scope = 'all' } = req.query;
@@ -196,6 +216,118 @@ exports.updateEvent = async (req, res) => {
         if (!ev) return res.status(404).json({ message: 'Event not found' });
         if (ev.organizer.toString() !== req.user.id.toString() && (req.user.role || 'employee') !== 'admin') {
             return res.status(403).json({ message: 'Not allowed' });
+        }
+
+        const scopeQ = req.query.scope;
+        const instanceStartRaw = req.query.instanceStart;
+        const pattern = ev.recurrence && ev.recurrence.pattern;
+        const isRecurring = pattern && RECURRING_PATTERNS.includes(pattern);
+        const changingTime =
+            req.body.start !== undefined || req.body.end !== undefined || req.body.allDay !== undefined;
+
+        /* Drag/resize on an expanded instance: scope + instanceStart disambiguate recurring edits. */
+        if (isRecurring && changingTime && instanceStartRaw) {
+            const inst = new Date(instanceStartRaw);
+            if (Number.isNaN(inst.getTime())) {
+                return res.status(400).json({ message: 'instanceStart must be a valid date' });
+            }
+            if (scopeQ !== 'single' && scopeQ !== 'following' && scopeQ !== 'all') {
+                return res.status(400).json({ message: 'scope query must be single, following, or all' });
+            }
+
+            const newStart = req.body.start !== undefined ? new Date(req.body.start) : new Date(ev.start);
+            const newEnd = req.body.end !== undefined ? new Date(req.body.end) : new Date(ev.end);
+            if (!Number.isFinite(newStart.getTime()) || !Number.isFinite(newEnd.getTime()) || newEnd <= newStart) {
+                return res.status(400).json({ message: 'valid start and end are required' });
+            }
+            const newAllDay = req.body.allDay !== undefined ? !!req.body.allDay : !!ev.allDay;
+
+            const populateAndSend = async (doc) => {
+                const out = await CalendarEvent.findById(doc._id)
+                    .populate('organizer', 'name email')
+                    .populate('attendees', 'name email')
+                    .populate('workspace', 'name color');
+                return res.json(out);
+            };
+
+            if (scopeQ === 'all') {
+                const delta = newStart.getTime() - inst.getTime();
+                ev.start = new Date(ev.start.getTime() + delta);
+                ev.end = new Date(ev.end.getTime() + delta);
+                if (req.body.allDay !== undefined) {
+                    ev.allDay = newAllDay;
+                    if (ev.allDay) {
+                        ev.startTimeZone = '';
+                        ev.endTimeZone = '';
+                        ev.separateEndTimeZone = false;
+                    }
+                }
+                await ev.save();
+                return populateAndSend(ev);
+            }
+
+            if (scopeQ === 'single') {
+                if (!ev.recurrence.exceptions) ev.recurrence.exceptions = [];
+                const t = inst.getTime();
+                const exists = ev.recurrence.exceptions.some((d) => new Date(d).getTime() === t);
+                if (!exists) ev.recurrence.exceptions.push(inst);
+                await ev.save();
+
+                const plain = ev.toObject();
+                const created = await CalendarEvent.create({
+                    ...baseCloneFields(plain),
+                    start: newStart,
+                    end: newEnd,
+                    allDay: newAllDay,
+                    startTimeZone: newAllDay ? '' : plain.startTimeZone || '',
+                    endTimeZone: newAllDay ? '' : plain.endTimeZone || '',
+                    separateEndTimeZone: newAllDay ? false : !!plain.separateEndTimeZone,
+                    recurrence: { pattern: 'none', until: null, exceptions: [] },
+                });
+                return populateAndSend(created);
+            }
+
+            if (scopeQ === 'following') {
+                const anchor = new Date(ev.start);
+                const originalUntil = ev.recurrence.until ? new Date(ev.recurrence.until) : null;
+
+                if (inst.getTime() <= anchor.getTime()) {
+                    ev.start = newStart;
+                    ev.end = newEnd;
+                    ev.allDay = newAllDay;
+                    if (newAllDay) {
+                        ev.startTimeZone = '';
+                        ev.endTimeZone = '';
+                        ev.separateEndTimeZone = false;
+                    } else if (req.body.startTimeZone !== undefined) {
+                        ev.startTimeZone = String(req.body.startTimeZone || '');
+                    } else if (req.body.endTimeZone !== undefined) {
+                        ev.endTimeZone = String(req.body.endTimeZone || '');
+                    }
+                    await ev.save();
+                    return populateAndSend(ev);
+                }
+
+                ev.recurrence.until = new Date(inst.getTime() - 1);
+                await ev.save();
+
+                const plain = await CalendarEvent.findById(ev._id).lean();
+                const created = await CalendarEvent.create({
+                    ...baseCloneFields(plain),
+                    start: newStart,
+                    end: newEnd,
+                    allDay: newAllDay,
+                    startTimeZone: newAllDay ? '' : plain.startTimeZone || '',
+                    endTimeZone: newAllDay ? '' : plain.endTimeZone || '',
+                    separateEndTimeZone: newAllDay ? false : !!plain.separateEndTimeZone,
+                    recurrence: {
+                        pattern,
+                        until: originalUntil,
+                        exceptions: [],
+                    },
+                });
+                return populateAndSend(created);
+            }
         }
 
         const fields = [

@@ -9,7 +9,19 @@ import { TimeZoneDialog } from './dialogs/TimeZoneDialog';
 
 /** Main calendar feature layout: sidebar, react-big-calendar grid, composer, and auxiliary dialogs. */
 export function CalendarPageLayout({ page }) {
-  const { cal, theme, isDark, displayName, sidebar, grid, composer, deleteRecurring, timeZoneDialog, timeMenus } = page;
+  const {
+    cal,
+    theme,
+    isDark,
+    displayName,
+    sidebar,
+    grid,
+    composer,
+    deleteRecurring,
+    editRecurringMove,
+    timeZoneDialog,
+    timeMenus,
+  } = page;
 
   return (
     <>
@@ -64,6 +76,18 @@ export function CalendarPageLayout({ page }) {
         scope={deleteRecurring.scope}
         onScopeChange={deleteRecurring.setScope}
         onConfirm={deleteRecurring.onConfirm}
+      />
+
+      <DeleteRecurringDialog
+        title="Edit recurring event"
+        cal={cal}
+        theme={theme}
+        isDark={isDark}
+        open={editRecurringMove.open}
+        onClose={editRecurringMove.onClose}
+        scope={editRecurringMove.scope}
+        onScopeChange={editRecurringMove.setScope}
+        onConfirm={editRecurringMove.onConfirm}
       />
 
       <TimeZoneDialog

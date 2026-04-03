@@ -79,6 +79,9 @@ export function useCalendarPage() {
   const [editingEventSnapshot, setEditingEventSnapshot] = useState(null);
   const [deleteRecurringOpen, setDeleteRecurringOpen] = useState(false);
   const [deleteScope, setDeleteScope] = useState('this');
+  const [editRecurringMoveOpen, setEditRecurringMoveOpen] = useState(false);
+  const [editRecurringMoveScope, setEditRecurringMoveScope] = useState('this');
+  const [pendingRecurringMove, setPendingRecurringMove] = useState(null);
   /** When false (new Event only), show Google-style single-line time summary. */
   const [timeComposerExpanded, setTimeComposerExpanded] = useState(true);
   /** When false (new Event only), show calendar / busy / visibility / notify as summary only. */
@@ -557,6 +560,44 @@ export function useCalendarPage() {
     void executeDelete({ scope, instanceStart });
   };
 
+  const closeRecurringMoveDialog = () => {
+    setEditRecurringMoveOpen(false);
+    setPendingRecurringMove(null);
+  };
+
+  const confirmRecurringMove = async () => {
+    if (!pendingRecurringMove) return;
+    const { eventId, instanceStartIso, nextStart, nextEnd, isAllDay, resourceSnapshot } =
+      pendingRecurringMove;
+    const scope =
+      editRecurringMoveScope === 'this'
+        ? 'single'
+        : editRecurringMoveScope === 'following'
+          ? 'following'
+          : 'all';
+    const ev = resourceSnapshot;
+    const payload = {
+      title: String(ev.title || '').trim() || 'Untitled',
+      description: ev.description || '',
+      start: nextStart,
+      end: nextEnd,
+      allDay: typeof isAllDay === 'boolean' ? isAllDay : !!ev.allDay,
+      location: ev.location || '',
+      eventType: ev.eventType || 'meeting',
+      visibility: ev.visibility || 'personal',
+    };
+    try {
+      await axiosInstance.put(API_PATHS.BUSINESS.CALENDAR_EVENT(eventId), payload, {
+        params: { scope, instanceStart: instanceStartIso },
+      });
+      toast.success('Updated');
+      closeRecurringMoveDialog();
+      load();
+    } catch (e) {
+      toast.error(e.response?.data?.message || 'Could not update event');
+    }
+  };
+
   const openTimeZoneDialog = () => {
     if (allDay) return;
     setTzDraftSeparate(separateEndTimeZone);
@@ -651,18 +692,47 @@ export function useCalendarPage() {
     [load]
   );
 
+  const beginRecurringMoveFlow = useCallback((event, start, end, isAllDay) => {
+    const ev = event?.resource || {};
+    const s = new Date(start);
+    const en = new Date(end);
+    if (!Number.isFinite(s.getTime()) || !Number.isFinite(en.getTime())) return;
+    const normalizedEnd = en <= s ? new Date(s.getTime() + 60 * 60 * 1000) : en;
+    const instanceStart = new Date(ev.start != null ? ev.start : event.start);
+    setPendingRecurringMove({
+      eventId: ev._id,
+      instanceStartIso: instanceStart.toISOString(),
+      nextStart: s.toISOString(),
+      nextEnd: normalizedEnd.toISOString(),
+      isAllDay,
+      resourceSnapshot: { ...ev },
+    });
+    setEditRecurringMoveScope('this');
+    setEditRecurringMoveOpen(true);
+  }, []);
+
   const onEventDrop = useCallback(
     ({ event, start, end, allDay: isAllDay }) => {
+      const p = event?.resource?.recurrence?.pattern;
+      if (p && p !== 'none') {
+        beginRecurringMoveFlow(event, start, end, isAllDay);
+        return;
+      }
       updateEventTimes(event, start, end, isAllDay);
     },
-    [updateEventTimes]
+    [beginRecurringMoveFlow, updateEventTimes]
   );
 
   const onEventResize = useCallback(
     ({ event, start, end, allDay: isAllDay }) => {
+      const p = event?.resource?.recurrence?.pattern;
+      if (p && p !== 'none') {
+        beginRecurringMoveFlow(event, start, end, isAllDay);
+        return;
+      }
       updateEventTimes(event, start, end, isAllDay);
     },
-    [updateEventTimes]
+    [beginRecurringMoveFlow, updateEventTimes]
   );
 
   const navigateCal = (direction) => {
@@ -797,6 +867,13 @@ export function useCalendarPage() {
       scope: deleteScope,
       setScope: setDeleteScope,
       onConfirm: confirmRecurringDelete,
+    },
+    editRecurringMove: {
+      open: editRecurringMoveOpen,
+      scope: editRecurringMoveScope,
+      setScope: setEditRecurringMoveScope,
+      onConfirm: confirmRecurringMove,
+      onClose: closeRecurringMoveDialog,
     },
     timeZoneDialog: {
       open: timeZoneDialogOpen,

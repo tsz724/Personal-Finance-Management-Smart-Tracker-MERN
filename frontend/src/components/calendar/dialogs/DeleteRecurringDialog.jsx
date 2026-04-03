@@ -17,6 +17,7 @@ export function DeleteRecurringDialog({
   scope,
   onScopeChange,
   onConfirm,
+  title = 'Delete recurring event',
 }) {
   return (
     <Dialog
@@ -33,7 +34,7 @@ export function DeleteRecurringDialog({
         },
       }}
     >
-      <DialogTitle sx={{ fontWeight: 700, fontSize: '1.15rem', pb: 1 }}>Delete recurring event</DialogTitle>
+      <DialogTitle sx={{ fontWeight: 700, fontSize: '1.15rem', pb: 1 }}>{title}</DialogTitle>
       <DialogContent>
         <RadioGroup value={scope} onChange={(e) => onScopeChange(e.target.value)} sx={{ gap: 0.5 }}>
           <FormControlLabel
