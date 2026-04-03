@@ -24,6 +24,15 @@ import {
   monthlyOrdinalLabel,
 } from '../dateUtils';
 
+function sortRawEventsByStart(list) {
+  return [...list].sort((a, b) => new Date(a.start) - new Date(b.start));
+}
+
+function isRecurrenceSeriesSnapshot(snap) {
+  const p = snap?.recurrence?.pattern;
+  return !!(p && p !== 'none');
+}
+
 /** Calendar feature controller (data, grid interactions, composer). */
 export function useCalendarPage() {
   const theme = useTheme();
@@ -493,13 +502,48 @@ export function useCalendarPage() {
       toast.error('End must be after start');
       return;
     }
+    const recPatEffective =
+      composerTab === 'task'
+        ? 'none'
+        : recurrencePattern === 'custom'
+          ? 'none'
+          : recurrencePattern;
+
     try {
       if (editingId) {
-        await axiosInstance.put(API_PATHS.BUSINESS.CALENDAR_EVENT(editingId), payload);
+        const { data } = await axiosInstance.put(API_PATHS.BUSINESS.CALENDAR_EVENT(editingId), payload);
         toast.success('Saved');
+        const wasRec = isRecurrenceSeriesSnapshot(editingEventSnapshot);
+        const nowRec = !!(payload.recurrence?.pattern && payload.recurrence.pattern !== 'none');
+        if (!wasRec && !nowRec) {
+          setRawEvents((prev) =>
+            sortRawEventsByStart(
+              prev.map((row) =>
+                String(row._id) === String(editingId)
+                  ? {
+                      ...row,
+                      ...data,
+                      start: data.start,
+                      end: data.end,
+                      _recurrenceInstanceKey: row._recurrenceInstanceKey || String(data._id),
+                    }
+                  : row
+              )
+            )
+          );
+        } else {
+          load();
+        }
       } else {
-        await axiosInstance.post(API_PATHS.BUSINESS.CALENDAR, payload);
+        const { data } = await axiosInstance.post(API_PATHS.BUSINESS.CALENDAR, payload);
         toast.success('Saved');
+        if (recPatEffective === 'none') {
+          setRawEvents((prev) =>
+            sortRawEventsByStart([...prev, { ...data, _recurrenceInstanceKey: String(data._id) }])
+          );
+        } else {
+          load();
+        }
       }
       setOpen(false);
       setEditingId(null);
@@ -509,7 +553,6 @@ export function useCalendarPage() {
       setStartTimeZone(br2);
       setEndTimeZone(br2);
       setSeparateEndTimeZone(false);
-      load();
     } catch {
       toast.error(editingId ? 'Update failed' : 'Save failed');
     }
@@ -533,8 +576,16 @@ export function useCalendarPage() {
         ...(query ? { params: query } : {}),
       });
       toast.success('Deleted');
+      const rec = isRecurrenceSeriesSnapshot(editingEventSnapshot);
+      const scope = query?.scope;
+      if (!rec || !query) {
+        setRawEvents((prev) => prev.filter((row) => String(row._id) !== String(editingId)));
+      } else if (scope === 'all') {
+        setRawEvents((prev) => prev.filter((row) => String(row._id) !== String(editingId)));
+      } else {
+        load();
+      }
       closeComposerAfterDelete();
-      load();
     } catch {
       toast.error('Delete failed');
     }
@@ -687,13 +738,25 @@ export function useCalendarPage() {
       try {
         await axiosInstance.put(API_PATHS.BUSINESS.CALENDAR_EVENT(id), payload);
         toast.success('Updated');
+        setRawEvents((prev) =>
+          sortRawEventsByStart(
+            prev.map((row) =>
+              String(row._id) === String(id)
+                ? {
+                    ...row,
+                    start: new Date(s.toISOString()),
+                    end: new Date(normalizedEnd.toISOString()),
+                    allDay: payload.allDay,
+                  }
+                : row
+            )
+          )
+        );
       } catch (e) {
         toast.error(e.response?.data?.message || 'Could not update event');
-      } finally {
-        load();
       }
     },
-    [load]
+    []
   );
 
   const beginRecurringMoveFlow = useCallback((event, start, end, isAllDay) => {

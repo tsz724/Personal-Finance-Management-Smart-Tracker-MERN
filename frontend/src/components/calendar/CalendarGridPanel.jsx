@@ -11,7 +11,7 @@ import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import moment from 'moment';
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { applyTimeGridScroll, getCalendarScrollToTime } from './calendarScroll';
 import { DnDCalendar, Views, calendarLocalizer } from './calendarDnD';
 import { CalendarEventChip } from './CalendarEventChip';
@@ -37,19 +37,31 @@ export function CalendarGridPanel({
 }) {
   const areaSx = getBigCalendarAreaSx({ theme, cal });
   const calendarRootRef = useRef(null);
+  /** Latest events for scroll math only when view/date changes (not on save/drag refetch). */
+  const eventsRef = useRef(calendarEvents);
+  useEffect(() => {
+    eventsRef.current = calendarEvents;
+  }, [calendarEvents]);
 
+  /* Stable while data refetches so RBC does not re-run auto-scroll on every mutation. */
   const scrollToTime = useMemo(
-    () => getCalendarScrollToTime(currentView, currentDate, calendarEvents),
-    [currentView, currentDate, calendarEvents]
+    () => getCalendarScrollToTime(currentView, currentDate, null),
+    [currentView, currentDate]
   );
 
+  /* Initial scroll + week/day navigation only — not when events[] updates (Google-like, no jump on edit). */
   useLayoutEffect(() => {
     const run = () =>
-      applyTimeGridScroll(calendarRootRef.current, currentView, currentDate, calendarEvents);
+      applyTimeGridScroll(
+        calendarRootRef.current,
+        currentView,
+        currentDate,
+        eventsRef.current
+      );
     run();
     const id = requestAnimationFrame(run);
     return () => cancelAnimationFrame(id);
-  }, [currentView, currentDate, calendarEvents]);
+  }, [currentView, currentDate]);
 
   return (
     <Box sx={{ flex: 1, py: { xs: 1, md: 1.5 }, px: 0 }}>
