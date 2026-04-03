@@ -12,17 +12,25 @@ export function getBigCalendarAreaSx({ theme, cal }) {
     },
     '& .rbc-toolbar': { display: 'none' },
     '& .rbc-header': {
-      padding: '10px 4px',
-      fontWeight: 700,
+      padding: '6px 4px',
+      fontWeight: 600,
       fontSize: 11,
-      textTransform: 'uppercase',
+      textTransform: 'none',
       color: cal.muted,
       borderBottom: `1px solid ${cal.border}`,
+      ...(!cal.isDark && { backgroundColor: '#fff' }),
+    },
+    '& .rbc-header .rbc-button-link': {
+      display: 'block',
+      width: '100%',
+      color: 'inherit',
+      textDecoration: 'none',
     },
     '& .rbc-month-view, & .rbc-time-view': {
       border: `1px solid ${cal.border}`,
       borderRadius: 1,
       overflow: 'hidden',
+      ...(!cal.isDark && { backgroundColor: '#fff' }),
     },
     '& .rbc-day-bg + .rbc-day-bg, & .rbc-time-header-content, & .rbc-day-slot .rbc-time-slot': {
       borderColor: cal.border,
@@ -31,7 +39,9 @@ export function getBigCalendarAreaSx({ theme, cal }) {
       backgroundColor: cal.offRangeBg,
     },
     '& .rbc-today': {
-      backgroundColor: alpha(theme.palette.primary.main, 0.12),
+      backgroundColor: cal.isDark
+        ? alpha(theme.palette.primary.main, 0.12)
+        : alpha(theme.palette.primary.main, 0.06),
     },
     '& .rbc-time-header-content .rbc-header': {
       borderBottom: `1px solid ${cal.border}`,
@@ -39,7 +49,13 @@ export function getBigCalendarAreaSx({ theme, cal }) {
     '& .rbc-time-content, & .rbc-day-slot .rbc-background-event': {
       borderTop: `1px solid ${cal.border}`,
     },
-    '& .rbc-label': { color: cal.muted, fontSize: 13 },
+    ...(!cal.isDark && {
+      '& .rbc-time-content': { backgroundColor: '#fff' },
+      '& .rbc-time-gutter': { backgroundColor: '#fff' },
+      '& .rbc-time-header': { backgroundColor: '#fff' },
+      '& .rbc-month-view .rbc-day-bg': { backgroundColor: '#fff' },
+    }),
+    '& .rbc-label': { color: cal.muted, fontSize: 12 },
     /* Half-hour rows; single-line “Title 8:00 AM – 8:30 AM” fits comfortably. */
     '& .rbc-day-slot .rbc-time-slot': {
       minHeight: 52,
@@ -54,13 +70,13 @@ export function getBigCalendarAreaSx({ theme, cal }) {
     '& .rbc-day-slot .rbc-event, & .rbc-day-slot .rbc-background-event': {
       flexDirection: 'row',
       flexWrap: 'nowrap',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       justifyContent: 'flex-start',
-      minHeight: 24,
-      padding: '6px 10px',
+      minHeight: 22,
+      padding: '3px 6px',
       lineHeight: 1.25,
       gap: 0,
-      color: '#fff',
+      color: 'inherit',
     },
     '& .rbc-day-slot .rbc-event-label': {
       display: 'none',
@@ -68,25 +84,25 @@ export function getBigCalendarAreaSx({ theme, cal }) {
     '& .rbc-day-slot .rbc-event-content': {
       flex: '1 1 auto',
       minWidth: 0,
-      fontSize: '0.875rem',
-      fontWeight: 800,
+      fontSize: '0.75rem',
+      fontWeight: 600,
       lineHeight: 1.25,
       color: 'inherit',
-      whiteSpace: 'nowrap',
+      whiteSpace: 'normal',
       overflow: 'hidden',
-      textOverflow: 'ellipsis',
     },
     '& .rbc-current-time-indicator': {
-      backgroundColor: theme.palette.error.main,
+      backgroundColor: '#ea4335',
+      height: 2,
     },
     /* Month / agenda row chips — same visual weight as week view (no tiny grey text). */
     '& .rbc-row-segment .rbc-event': {
-      padding: '5px 8px',
+      padding: '3px 6px',
       lineHeight: 1.25,
-      color: '#fff',
+      color: 'inherit',
       flexDirection: 'row',
       flexWrap: 'nowrap',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: 0,
     },
     '& .rbc-row-segment .rbc-event-label': {
@@ -95,13 +111,12 @@ export function getBigCalendarAreaSx({ theme, cal }) {
     '& .rbc-row-segment .rbc-event-content': {
       flex: '1 1 auto',
       minWidth: 0,
-      fontSize: '0.875rem',
-      fontWeight: 800,
+      fontSize: '0.75rem',
+      fontWeight: 600,
       lineHeight: 1.25,
       color: 'inherit',
-      whiteSpace: 'nowrap',
+      whiteSpace: 'normal',
       overflow: 'hidden',
-      textOverflow: 'ellipsis',
     },
     '& .rbc-agenda-view .rbc-event-label': {
       display: 'none',

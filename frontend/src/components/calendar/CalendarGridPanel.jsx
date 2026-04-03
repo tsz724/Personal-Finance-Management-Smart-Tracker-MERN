@@ -14,6 +14,7 @@ import moment from 'moment';
 import { DnDCalendar, Views, calendarLocalizer } from './calendarDnD';
 import { CalendarEventChip } from './CalendarEventChip';
 import { CalendarGridViewContext } from './CalendarGridContext';
+import { CalendarWeekHeader } from './CalendarWeekHeader';
 import { getBigCalendarAreaSx } from './styles/bigCalendarAreaSx';
 
 export function CalendarGridPanel({
@@ -100,7 +101,7 @@ export function CalendarGridPanel({
           <CalendarGridViewContext.Provider value={currentView}>
             <DnDCalendar
               localizer={calendarLocalizer}
-              components={{ event: CalendarEventChip }}
+              components={{ event: CalendarEventChip, header: CalendarWeekHeader }}
               events={calendarEvents}
               startAccessor="start"
               endAccessor="end"

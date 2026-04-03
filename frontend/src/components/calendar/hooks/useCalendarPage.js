@@ -28,7 +28,8 @@ import {
 export function useCalendarPage() {
   const theme = useTheme();
   const { user } = useContext(UserContext);
-  const cal = useMemo(() => getCalendarTokens(theme), [theme]);
+  // Google-style calendar is a light surface even if the rest of the app uses dark mode.
+  const cal = useMemo(() => getCalendarTokens(theme, { forceLight: true }), [theme]);
   const isDark = cal.isDark;
 
   const palette = useMemo(
@@ -151,7 +152,10 @@ export function useCalendarPage() {
     }
   }, [allDay, start, end]);
 
-  const calendarEvents = useMemo(() => mapApiToRbcEvents(rawEvents, palette), [rawEvents, palette]);
+  const calendarEvents = useMemo(
+    () => mapApiToRbcEvents(rawEvents, palette, { theme, pastelFill: !cal.isDark }),
+    [rawEvents, palette, theme, cal.isDark]
+  );
 
   const timeZoneAutocompleteOptions = useMemo(
     () =>

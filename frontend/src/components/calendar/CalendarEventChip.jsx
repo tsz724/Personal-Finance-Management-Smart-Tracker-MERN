@@ -2,15 +2,44 @@ import moment from 'moment';
 import { Views } from 'react-big-calendar';
 import { useCalendarGridView } from './CalendarGridContext';
 
-/** Compact time like "9a" / "9:30a" (single-letter am/pm, no redundant :00). */
-function compactClock(m) {
+/** Always includes am/pm, e.g. "11am", "2:30pm". */
+function formatClockLower(m) {
   const x = moment(m);
-  const h = x.format('h');
   const min = x.minute();
-  const ap = x.hour() < 12 ? 'a' : 'p';
-  if (min === 0) return `${h}${ap}`;
-  return `${h}:${String(min).padStart(2, '0')}${ap}`;
+  const ap = x.format('a').toLowerCase();
+  if (min === 0) return `${x.format('h')}${ap}`;
+  return `${x.format('h:mm')}${ap}`;
 }
+
+/** Start of a same-day range: "9:30" when meridian matches end, else "9:30am". */
+function formatRangeLineStart(s, e) {
+  const sameMeridian = (s.hour() < 12) === (e.hour() < 12);
+  const min = s.minute();
+  const ap = s.format('a').toLowerCase();
+  if (!sameMeridian) {
+    if (min === 0) return `${s.format('h')}${ap}`;
+    return `${s.format('h:mm')}${ap}`;
+  }
+  if (min === 0) return `${s.format('h')}${ap}`;
+  return s.format('h:mm');
+}
+
+/** Second line for long blocks, e.g. "9:30 - 11am", "9am - 2pm". */
+export function formatEventTimeRangeLine(event, ev) {
+  const start = event?.start ?? ev?.start;
+  const end = event?.end ?? ev?.end;
+  if (!start || !end) return '';
+  const s = moment(start);
+  const e = moment(end);
+  if (!s.isSame(e, 'day')) {
+    return `${s.format('MMM D')} ${formatClockLower(s)} - ${e.format('MMM D')} ${formatClockLower(e)}`;
+  }
+  if (s.isSame(e, 'minute')) return formatClockLower(s);
+  return `${formatRangeLineStart(s, e)} - ${formatClockLower(e)}`;
+}
+
+/** Timed events this long use title on first line and range below (taller chips). */
+const TWO_LINE_MIN_MS = 45 * 60 * 1000;
 
 export function formatEventCommaTime(event, ev, titleFromAccessor, { includeTime = true } = {}) {
   const start = event?.start ?? ev?.start;
@@ -28,32 +57,71 @@ export function formatEventCommaTime(event, ev, titleFromAccessor, { includeTime
     return `${displayTitle}, ${s.format('MMM D')} – ${e.format('MMM D')}`;
   }
 
-  const s = moment(start);
-  const e = moment(end);
-  let timePart;
-  if (s.isSame(e, 'minute')) {
-    timePart = compactClock(s);
-  } else if (s.isSame(e, 'day')) {
-    timePart = `${compactClock(s)} – ${compactClock(e)}`;
-  } else {
-    timePart = `${s.format('MMM D')} ${compactClock(s)} – ${e.format('MMM D')} ${compactClock(e)}`;
-  }
+  const timePart = formatEventTimeRangeLine(event, ev);
   return `${displayTitle}, ${timePart}`;
 }
 
 /**
- * react-big-calendar `components.event`: one line “Title, 9am” (list style), not separate time row.
- * Agenda view already has a time column — title only there.
+ * react-big-calendar `components.event`: “Title, 9a” for short blocks; title + time range on two lines when taller.
+ * Agenda keeps title only (time is in its own column).
  */
 export function CalendarEventChip(props) {
   const view = useCalendarGridView();
   const { event, title } = props;
   const ev = event?.resource ?? event;
+  const allDay = ev?.allDay ?? event?.allDay;
 
-  const text =
-    view === Views.AGENDA
-      ? String(title ?? ev?.title ?? '').trim() || '(No title)'
-      : formatEventCommaTime(event, ev, title, { includeTime: true });
+  if (view === Views.AGENDA) {
+    const t = String(title ?? ev?.title ?? '').trim() || '(No title)';
+    return <span>{t}</span>;
+  }
 
+  const start = event?.start;
+  const end = event?.end;
+  const durationMs =
+    start && end ? new Date(end).getTime() - new Date(start).getTime() : 0;
+  const useTwoLines =
+    !allDay && durationMs >= TWO_LINE_MIN_MS && !!start && !!end;
+
+  if (useTwoLines) {
+    const titleOnly = String(title ?? ev?.title ?? '').trim() || '(No title)';
+    const range = formatEventTimeRangeLine(event, ev);
+    return (
+      <span
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'stretch',
+          gap: 1,
+          minWidth: 0,
+          width: '100%',
+        }}
+      >
+        <span
+          style={{
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {titleOnly}
+        </span>
+        <span
+          style={{
+            fontWeight: 500,
+            opacity: 0.9,
+            fontSize: '0.92em',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {range}
+        </span>
+      </span>
+    );
+  }
+
+  const text = formatEventCommaTime(event, ev, title, { includeTime: true });
   return <span>{text}</span>;
 }

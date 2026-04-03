@@ -1,8 +1,8 @@
 import { alpha } from '@mui/material/styles';
 
 /** Semantic palette for calendar shell + react-big-calendar chrome (not MUI theme itself). */
-export function getCalendarTokens(theme) {
-  const isDark = theme.palette.mode === 'dark';
+export function getCalendarTokens(theme, { forceLight = false } = {}) {
+  const isDark = forceLight ? false : theme.palette.mode === 'dark';
   if (isDark) {
     return {
       isDark,
