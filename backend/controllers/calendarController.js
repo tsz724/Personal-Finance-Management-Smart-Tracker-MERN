@@ -1,5 +1,8 @@
 const CalendarEvent = require('../models/CalendarEvent');
 const { findWorkspaceForUser, workspaceIdsForUser } = require('../utils/workspaceHelper');
+const { expandRecurrence } = require('../utils/recurrenceExpand');
+
+const RECURRING_PATTERNS = ['daily', 'weekly', 'monthly', 'yearly', 'weekdays'];
 
 exports.listEvents = async (req, res) => {
     try {
@@ -13,41 +16,88 @@ exports.listEvents = async (req, res) => {
             end: { $gte: startFilter },
         };
 
-        let filter;
+        let visibilityClause;
         if (scope === 'personal' || !workspaceId) {
             const wsIds = await workspaceIdsForUser(userId);
-            filter = {
-                $and: [
-                    inWindow,
-                    {
-                        $or: [
-                            { organizer: userId, visibility: 'personal' },
-                            { organizer: userId, visibility: 'workspace' },
-                            { attendees: userId },
-                            { workspace: { $in: wsIds }, visibility: 'workspace' },
-                        ],
-                    },
+            visibilityClause = {
+                $or: [
+                    { organizer: userId, visibility: 'personal' },
+                    { organizer: userId, visibility: 'workspace' },
+                    { attendees: userId },
+                    { workspace: { $in: wsIds }, visibility: 'workspace' },
                 ],
             };
         } else {
             const ctx = await findWorkspaceForUser(workspaceId, userId);
             if (!ctx) return res.status(404).json({ message: 'Workspace not found' });
-            filter = {
-                $and: [
-                    inWindow,
-                    {
-                        $or: [{ workspace: workspaceId, visibility: 'workspace' }, { organizer: userId }],
-                    },
-                ],
+            visibilityClause = {
+                $or: [{ workspace: workspaceId, visibility: 'workspace' }, { organizer: userId }],
             };
         }
+
+        const nonRecurringBranch = {
+            $and: [
+                inWindow,
+                {
+                    $or: [
+                        { recurrence: { $exists: false } },
+                        { 'recurrence.pattern': { $exists: false } },
+                        { 'recurrence.pattern': null },
+                        { 'recurrence.pattern': 'none' },
+                    ],
+                },
+            ],
+        };
+
+        const recurringBranch = {
+            $and: [
+                { 'recurrence.pattern': { $in: RECURRING_PATTERNS } },
+                { start: { $lte: endFilter } },
+                {
+                    $or: [
+                        { 'recurrence.until': { $exists: false } },
+                        { 'recurrence.until': null },
+                        { 'recurrence.until': { $gte: startFilter } },
+                    ],
+                },
+            ],
+        };
+
+        const filter = {
+            $and: [visibilityClause, { $or: [nonRecurringBranch, recurringBranch] }],
+        };
 
         const events = await CalendarEvent.find(filter)
             .populate('organizer', 'name email')
             .populate('attendees', 'name email')
             .populate('workspace', 'name color')
-            .sort({ start: 1 });
-        res.json(events);
+            .sort({ start: 1 })
+            .lean();
+
+        const expanded = [];
+        for (const ev of events) {
+            const pattern = ev.recurrence && ev.recurrence.pattern;
+            if (!pattern || pattern === 'none') {
+                expanded.push({
+                    ...ev,
+                    _recurrenceInstanceKey: String(ev._id),
+                });
+                continue;
+            }
+            const instances = expandRecurrence(ev, startFilter, endFilter);
+            const keyBase = String(ev._id);
+            for (const inst of instances) {
+                expanded.push({
+                    ...ev,
+                    start: inst.start,
+                    end: inst.end,
+                    _recurrenceInstanceKey: `${keyBase}_${inst.start.getTime()}`,
+                });
+            }
+        }
+
+        expanded.sort((a, b) => new Date(a.start) - new Date(b.start));
+        res.json(expanded);
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'Server error' });
@@ -63,25 +113,61 @@ exports.createEvent = async (req, res) => {
             end,
             allDay,
             attendees,
+            guestEmails,
+            meetingLink,
+            eventColor,
+            availability,
+            reminderMinutesBefore,
             location,
             workspaceId,
             visibility,
+            visibilityKind,
             eventType,
+            recurrence,
+            startTimeZone,
+            endTimeZone,
+            separateEndTimeZone,
         } = req.body;
         if (!title || !start || !end) {
             return res.status(400).json({ message: 'title, start, and end are required' });
         }
+
+        const mappedVisibility =
+            visibilityKind === 'public' ? 'workspace' : 'personal';
+
         const doc = {
             title: title.trim(),
             description: description || '',
             start: new Date(start),
             end: new Date(end),
             allDay: !!allDay,
+            startTimeZone: !allDay && startTimeZone ? String(startTimeZone) : '',
+            endTimeZone: !allDay && endTimeZone ? String(endTimeZone) : '',
+            separateEndTimeZone: !!allDay ? false : !!separateEndTimeZone,
             organizer: req.user.id,
             attendees: Array.isArray(attendees) ? attendees : [],
+            guestEmails: Array.isArray(guestEmails) ? guestEmails : [],
+            meetingLink: meetingLink || '',
+            eventColor: eventColor || '',
+            availability: availability || 'busy',
+            reminderMinutesBefore:
+                typeof reminderMinutesBefore === 'number' ? reminderMinutesBefore : 30,
             location: location || '',
-            visibility: visibility || 'personal',
+            visibility: visibilityKind ? mappedVisibility : (visibility || 'personal'),
+            visibilityKind: visibilityKind || 'default',
             eventType: eventType || 'meeting',
+            recurrence: {
+                pattern:
+                    recurrence && RECURRING_PATTERNS.includes(recurrence.pattern)
+                        ? recurrence.pattern
+                        : 'none',
+                until:
+                    recurrence && recurrence.until ? new Date(recurrence.until) : null,
+                exceptions:
+                    recurrence && Array.isArray(recurrence.exceptions)
+                        ? recurrence.exceptions.map((x) => new Date(x))
+                        : [],
+            },
             workspace: null,
         };
         if (workspaceId) {
@@ -111,12 +197,43 @@ exports.updateEvent = async (req, res) => {
         if (ev.organizer.toString() !== req.user.id.toString() && (req.user.role || 'employee') !== 'admin') {
             return res.status(403).json({ message: 'Not allowed' });
         }
-        const fields = ['title', 'description', 'start', 'end', 'allDay', 'attendees', 'location', 'visibility', 'eventType', 'workspace'];
+
+        const fields = [
+            'title',
+            'description',
+            'start',
+            'end',
+            'allDay',
+            'attendees',
+            'guestEmails',
+            'meetingLink',
+            'eventColor',
+            'availability',
+            'reminderMinutesBefore',
+            'location',
+            'visibility',
+            'visibilityKind',
+            'eventType',
+            'workspace',
+            'startTimeZone',
+            'endTimeZone',
+            'separateEndTimeZone',
+        ];
         for (const f of fields) {
             if (req.body[f] !== undefined) {
                 if (f === 'start' || f === 'end') ev[f] = new Date(req.body[f]);
-                else if (f === 'allDay') ev.allDay = !!req.body[f];
+                else if (f === 'allDay') {
+                    ev.allDay = !!req.body[f];
+                    if (ev.allDay) {
+                        ev.startTimeZone = '';
+                        ev.endTimeZone = '';
+                        ev.separateEndTimeZone = false;
+                    }
+                } else if (f === 'startTimeZone') ev.startTimeZone = String(req.body[f] || '');
+                else if (f === 'endTimeZone') ev.endTimeZone = String(req.body[f] || '');
+                else if (f === 'separateEndTimeZone') ev.separateEndTimeZone = !!req.body[f];
                 else if (f === 'attendees') ev.attendees = Array.isArray(req.body[f]) ? req.body[f] : [];
+                else if (f === 'guestEmails') ev.guestEmails = Array.isArray(req.body[f]) ? req.body[f] : [];
                 else if (f === 'title') ev.title = String(req.body[f]).trim();
                 else if (f === 'workspace') {
                     if (req.body[f]) {
@@ -126,7 +243,36 @@ exports.updateEvent = async (req, res) => {
                     } else {
                         ev.workspace = null;
                     }
+                } else if (f === 'visibilityKind') {
+                    ev.visibilityKind = req.body[f];
+                    ev.visibility = ev.visibilityKind === 'public' ? 'workspace' : 'personal';
                 } else ev[f] = req.body[f];
+            }
+        }
+        if (req.body.recurrence !== undefined) {
+            const r = req.body.recurrence;
+            if (!ev.recurrence) ev.recurrence = {};
+            if (typeof r.pattern === 'string') {
+                const pattern = RECURRING_PATTERNS.includes(r.pattern)
+                    ? r.pattern
+                    : r.pattern === 'none'
+                      ? 'none'
+                      : ev.recurrence.pattern || 'none';
+                ev.recurrence.pattern = pattern;
+                if (pattern === 'none') {
+                    ev.recurrence.until = null;
+                    ev.recurrence.exceptions = [];
+                }
+            }
+            if (ev.recurrence.pattern !== 'none') {
+                if (r.until !== undefined && r.until !== null) {
+                    ev.recurrence.until = new Date(r.until);
+                } else if (r.until === null) {
+                    ev.recurrence.until = null;
+                }
+                if (Array.isArray(r.exceptions)) {
+                    ev.recurrence.exceptions = r.exceptions.map((x) => new Date(x));
+                }
             }
         }
         await ev.save();
@@ -143,11 +289,47 @@ exports.updateEvent = async (req, res) => {
 
 exports.deleteEvent = async (req, res) => {
     try {
+        const { scope = 'all', instanceStart } = req.query;
         const ev = await CalendarEvent.findById(req.params.id);
         if (!ev) return res.status(404).json({ message: 'Event not found' });
         if (ev.organizer.toString() !== req.user.id.toString() && (req.user.role || 'employee') !== 'admin') {
             return res.status(403).json({ message: 'Not allowed' });
         }
+
+        const pattern = ev.recurrence && ev.recurrence.pattern;
+        const isRecurring = pattern && pattern !== 'none';
+
+        if (!isRecurring || scope === 'all') {
+            await CalendarEvent.deleteOne({ _id: ev._id });
+            return res.json({ message: 'Deleted' });
+        }
+
+        const inst = instanceStart ? new Date(instanceStart) : null;
+        if (!inst || Number.isNaN(inst.getTime())) {
+            return res.status(400).json({ message: 'instanceStart is required for recurring delete' });
+        }
+
+        const anchor = new Date(ev.start);
+
+        if (scope === 'single') {
+            if (!ev.recurrence.exceptions) ev.recurrence.exceptions = [];
+            const t = inst.getTime();
+            const exists = ev.recurrence.exceptions.some((d) => new Date(d).getTime() === t);
+            if (!exists) ev.recurrence.exceptions.push(inst);
+            await ev.save();
+            return res.json({ message: 'Updated' });
+        }
+
+        if (scope === 'following') {
+            if (inst.getTime() <= anchor.getTime()) {
+                await CalendarEvent.deleteOne({ _id: ev._id });
+                return res.json({ message: 'Deleted' });
+            }
+            ev.recurrence.until = new Date(inst.getTime() - 1);
+            await ev.save();
+            return res.json({ message: 'Updated' });
+        }
+
         await CalendarEvent.deleteOne({ _id: ev._id });
         res.json({ message: 'Deleted' });
     } catch (e) {

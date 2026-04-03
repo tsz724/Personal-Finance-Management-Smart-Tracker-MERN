@@ -2,11 +2,18 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from 're
 import { Calendar, momentLocalizer, Views } from 'react-big-calendar';
 import withDragAndDrop from 'react-big-calendar/lib/addons/dragAndDrop';
 import moment from 'moment';
+import Autocomplete from '@mui/material/Autocomplete';
+import ImportExportIcon from '@mui/icons-material/ImportExport';
+import {
+  getBrowserTimeZone,
+  formatTimeZoneLabel,
+  listIanaTimeZones,
+  wallMomentToUtcIso,
+} from '../../utils/timeZones';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 import Homelayout from '../../components/layout/Homelayout';
 import { useUserAuth } from '../../hooks/useUserAuth';
 import { UserContext } from '../../context/UserContext';
@@ -18,14 +25,22 @@ import Button from '@mui/material/Button';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
+import Menu from '@mui/material/Menu';
+import ListItemText from '@mui/material/ListItemText';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Select from '@mui/material/Select';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Checkbox from '@mui/material/Checkbox';
 import Box from '@mui/material/Box';
+import ButtonBase from '@mui/material/ButtonBase';
 import Divider from '@mui/material/Divider';
 import IconButton from '@mui/material/IconButton';
 import ToggleButton from '@mui/material/ToggleButton';
@@ -33,7 +48,6 @@ import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import List from '@mui/material/List';
 import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
 import Collapse from '@mui/material/Collapse';
 import { useTheme, alpha } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
@@ -48,6 +62,8 @@ import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined';
+import NotificationsNoneOutlinedIcon from '@mui/icons-material/NotificationsNoneOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
@@ -85,13 +101,6 @@ function getFetchRange(date, view) {
   }
 }
 
-function toInputDatetimeLocal(d) {
-  if (!d) return '';
-  const x = new Date(d);
-  x.setMinutes(x.getMinutes() - x.getTimezoneOffset());
-  return x.toISOString().slice(0, 16);
-}
-
 function toInputDate(d) {
   if (!d) return '';
   const x = new Date(d);
@@ -106,6 +115,65 @@ function parseInputDateOnly(dateStr, endOfDay) {
   return d;
 }
 
+/** Google Calendar–style duration suffix, e.g. "30 mins", "1 hr", "1.5 hrs". */
+function formatDurationLabel(startM, endM) {
+  const minutes = endM.diff(startM, 'minute');
+  if (minutes < 60) return `${minutes} mins`;
+  const hours = minutes / 60;
+  if (hours === 1) return '1 hr';
+  if (hours === Math.floor(hours)) return `${hours} hrs`;
+  return `${hours} hrs`;
+}
+
+/** 15-minute slots for one calendar day (12:00a–11:45p). */
+function slotsFifteenMinutesForDay(dayMoment) {
+  const dayStart = dayMoment.clone().startOf('day');
+  const out = [];
+  for (let i = 0; i < 96; i += 1) {
+    out.push(dayStart.clone().add(i * 15, 'minute'));
+  }
+  return out;
+}
+
+/** End-time suggestions after start: each step +15m up to `count` steps (~24h). */
+/** Build end-time menu from UTC `startIso` and label rows in `displayTz`. */
+function endTimeSuggestionsFromUtc(startIso, displayTz, count = 96) {
+  const out = [];
+  const sUtc = moment.utc(startIso);
+  const startWall = sUtc.clone().tz(displayTz);
+  for (let i = 1; i <= count; i += 1) {
+    const eUtc = sUtc.clone().add(i * 15, 'minutes');
+    const endWall = eUtc.clone().tz(displayTz);
+    out.push({
+      endIso: eUtc.toISOString(),
+      timeLabel: endWall.format('h:mma'),
+      durationLabel: formatDurationLabel(startWall, endWall),
+    });
+  }
+  return out;
+}
+
+/** e.g. "first", "second", …, "last" — matches Google-style monthly labels. */
+function monthlyOrdinalLabel(m) {
+  const weekday = m.day();
+  const dom = m.date();
+  let nth = 0;
+  for (let d = 1; d <= dom; d += 1) {
+    if (m.clone().date(d).day() === weekday) nth += 1;
+  }
+  const eom = m.daysInMonth();
+  let hasLater = false;
+  for (let d = dom + 1; d <= eom; d += 1) {
+    if (m.clone().date(d).day() === weekday) {
+      hasLater = true;
+      break;
+    }
+  }
+  const words = ['first', 'second', 'third', 'fourth'];
+  if (!hasLater) return 'last';
+  return words[nth - 1] || `${nth}th`;
+}
+
 function mapApiToRbcEvents(list, palette) {
   const typeColors = {
     meeting: palette.primary,
@@ -117,16 +185,17 @@ function mapApiToRbcEvents(list, palette) {
     const start = new Date(ev.start);
     const end = new Date(ev.end);
     const c = typeColors[ev.eventType] || typeColors.other;
+    const backgroundColor = ev.eventColor || c.main;
     return {
-      id: ev._id,
+      id: ev._recurrenceInstanceKey || ev._id,
       title: ev.title,
       start,
       end: end > start ? end : new Date(start.getTime() + 60 * 60 * 1000),
       allDay: !!ev.allDay,
       resource: ev,
       style: {
-        backgroundColor: c.main,
-        borderColor: c.dark,
+        backgroundColor,
+        borderColor: ev.eventColor ? backgroundColor : c.dark,
         color: '#fff',
         borderRadius: 6,
         border: 'none',
@@ -231,6 +300,32 @@ export default function CalendarPage() {
   const [taskList, setTaskList] = useState('My Tasks');
   const [eventType, setEventType] = useState('meeting');
 
+  // Event panel fields (Google Calendar-like)
+  const [eventColor, setEventColor] = useState(() => theme.palette.primary.main);
+  const [availability, setAvailability] = useState('busy'); // busy/free
+  const [visibilityKind, setVisibilityKind] = useState('default'); // default/public/private
+  const [reminderMinutesBefore, setReminderMinutesBefore] = useState(30);
+  const [recurrencePattern, setRecurrencePattern] = useState('none');
+  const [recurrenceExtras, setRecurrenceExtras] = useState({ until: null, exceptions: [] });
+  const [editingEventSnapshot, setEditingEventSnapshot] = useState(null);
+  const [deleteRecurringOpen, setDeleteRecurringOpen] = useState(false);
+  const [deleteScope, setDeleteScope] = useState('this');
+  /** When false (new Event only), show Google-style single-line time summary. */
+  const [timeComposerExpanded, setTimeComposerExpanded] = useState(true);
+  /** When false (new Event only), show calendar / busy / visibility / notify as summary only. */
+  const [calendarRowExpanded, setCalendarRowExpanded] = useState(true);
+
+  const [startTimeZone, setStartTimeZone] = useState(getBrowserTimeZone);
+  const [endTimeZone, setEndTimeZone] = useState(getBrowserTimeZone);
+  const [separateEndTimeZone, setSeparateEndTimeZone] = useState(false);
+  const [timeZoneDialogOpen, setTimeZoneDialogOpen] = useState(false);
+  const [tzDraftSeparate, setTzDraftSeparate] = useState(false);
+  const [tzDraftStart, setTzDraftStart] = useState('');
+  const [tzDraftEnd, setTzDraftEnd] = useState('');
+
+  const [startTimeMenuAnchor, setStartTimeMenuAnchor] = useState(null);
+  const [endTimeMenuAnchor, setEndTimeMenuAnchor] = useState(null);
+
   const load = useCallback(async () => {
     const { from, to } = getFetchRange(currentDate, currentView);
     try {
@@ -242,7 +337,7 @@ export default function CalendarPage() {
         },
       });
       setRawEvents(data);
-    } catch (e) {
+    } catch {
       toast.error('Could not load calendar');
     }
   }, [currentDate, currentView]);
@@ -252,18 +347,147 @@ export default function CalendarPage() {
   }, [load]);
 
   useEffect(() => {
+    if (!open) {
+      setStartTimeMenuAnchor(null);
+      setEndTimeMenuAnchor(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (!allDay) {
-      setStartMoment(moment(start || undefined));
-      setEndMoment(moment(end || undefined));
+      if (!start || !end) return;
+      const stz = startTimeZone || getBrowserTimeZone();
+      const etz = separateEndTimeZone ? endTimeZone || stz : stz;
+      setStartMoment(moment.utc(start).tz(stz));
+      setEndMoment(moment.utc(end).tz(etz));
       return;
     }
     const sd = parseInputDateOnly(start, false);
     const ed = parseInputDateOnly(end, true);
     if (sd) setStartMoment(moment(sd));
     if (ed) setEndMoment(moment(ed));
-  }, [start, end, allDay]);
+  }, [start, end, allDay, startTimeZone, endTimeZone, separateEndTimeZone]);
+
+  useEffect(() => {
+    // Keep all-day end date >= start date (basic “smart compare” behavior).
+    if (!allDay) return;
+    if (!start || !end) return;
+    const sd = parseInputDateOnly(start, false);
+    const ed = parseInputDateOnly(end, true);
+    if (sd && ed && ed < sd) {
+      setEnd(start);
+    }
+  }, [allDay, start, end]);
 
   const calendarEvents = useMemo(() => mapApiToRbcEvents(rawEvents, palette), [rawEvents, palette]);
+
+  const timeZoneAutocompleteOptions = useMemo(
+    () =>
+      listIanaTimeZones()
+        .map((z) => ({ value: z, label: formatTimeZoneLabel(z) }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    []
+  );
+
+  const startTimeDaySlots = useMemo(
+    () => slotsFifteenMinutesForDay(startMoment.clone().startOf('day')),
+    [startMoment]
+  );
+
+  const endTimeSuggestionRows = useMemo(() => {
+    if (!start || allDay) return [];
+    const stz = startTimeZone || getBrowserTimeZone();
+    const displayTz = separateEndTimeZone ? endTimeZone || stz : stz;
+    return endTimeSuggestionsFromUtc(start, displayTz, 96);
+  }, [start, allDay, separateEndTimeZone, endTimeZone, startTimeZone]);
+
+  const meetingCalendarSlotProps = useMemo(
+    () => ({
+      desktopPaper: {
+        sx: {
+          bgcolor: cal.surfaceElevated,
+          color: cal.text,
+          border: `1px solid ${cal.border}`,
+          boxShadow: theme.shadows[12],
+          '& .MuiPickersCalendarHeader-label': { color: cal.text },
+          '& .MuiPickersArrowSwitcher-button': { color: cal.text },
+          '& .MuiDayCalendar-weekDayLabel': { color: cal.muted, fontSize: 12 },
+          '& .MuiPickersDay-root': { color: cal.text },
+          '& .MuiPickersDay-root.Mui-selected': {
+            bgcolor: theme.palette.primary.main,
+            color: theme.palette.primary.contrastText,
+          },
+          '& .MuiPickersDay-root:hover': { bgcolor: alpha(theme.palette.primary.main, isDark ? 0.24 : 0.16) },
+        },
+      },
+    }),
+    [cal, theme, isDark]
+  );
+
+  const meetingTimeMenuPaperSx = useMemo(
+    () => ({
+      maxHeight: 280,
+      bgcolor: cal.surfaceElevated,
+      color: cal.text,
+      border: `1px solid ${cal.border}`,
+      boxShadow: theme.shadows[12],
+      mt: 0.5,
+      overflowY: 'auto',
+      scrollbarWidth: 'thin',
+      '& .MuiMenuItem-root': { typography: 'body2', py: 0.65, px: 1.5 },
+      '& .MuiMenuItem-root.Mui-selected': {
+        bgcolor: isDark ? alpha('#fff', 0.12) : alpha(theme.palette.primary.main, 0.12),
+      },
+      '& .MuiMenuItem-root.Mui-selected:hover': {
+        bgcolor: isDark ? alpha('#fff', 0.16) : alpha(theme.palette.primary.main, 0.18),
+      },
+      '& .MuiMenuItem-root:hover': { bgcolor: isDark ? alpha('#fff', 0.06) : alpha('#000', 0.04) },
+    }),
+    [cal, theme, isDark]
+  );
+
+  const meetingTimeChipSx = useMemo(
+    () => ({
+      typography: 'body2',
+      fontWeight: 500,
+      textTransform: 'none',
+      px: 1.75,
+      py: 0.75,
+      minWidth: 86,
+      borderRadius: 2,
+      color: cal.text,
+      bgcolor: isDark ? alpha('#fff', 0.08) : alpha('#000', 0.06),
+      boxShadow: 'none',
+      border: '1px solid transparent',
+      '&:hover': { bgcolor: isDark ? alpha('#fff', 0.12) : alpha('#000', 0.09) },
+    }),
+    [cal.text, isDark]
+  );
+
+  const meetingDateFieldSx = useMemo(
+    () => ({
+      minWidth: { xs: '100%', sm: 210 },
+      '& .MuiOutlinedInput-root': {
+        borderRadius: 2,
+        bgcolor: isDark ? alpha('#fff', 0.08) : alpha('#000', 0.06),
+        '& fieldset': { border: 'none' },
+        '&:hover fieldset': { border: 'none' },
+        '&.Mui-focused fieldset': { border: 'none' },
+        '&.Mui-focused': {
+          boxShadow: `inset 0 -2px 0 ${theme.palette.primary.main}`,
+        },
+      },
+      '& .MuiInputBase-input': {
+        color: cal.text,
+        py: 0.85,
+        px: 1.25,
+        typography: 'body2',
+        fontWeight: 500,
+        cursor: 'pointer',
+      },
+    }),
+    [cal.text, isDark, theme.palette.primary.main]
+  );
 
   const headerLabel = useMemo(() => {
     if (currentView === Views.MONTH) return moment(currentDate).format('MMMM YYYY');
@@ -282,6 +506,54 @@ export default function CalendarPage() {
     return 'Save';
   }, [composerTab]);
 
+  const recurrenceMenuItems = useMemo(() => {
+    const d = startMoment.clone();
+    const weekday = d.format('dddd');
+    const ord = monthlyOrdinalLabel(d);
+    return [
+      { value: 'none', label: 'Does not repeat' },
+      { value: 'daily', label: 'Daily' },
+      { value: 'weekly', label: `Weekly on ${weekday}` },
+      { value: 'monthly', label: `Monthly on the ${ord} ${weekday}` },
+      { value: 'yearly', label: `Annually on ${d.format('MMMM D')}` },
+      { value: 'weekdays', label: 'Every weekday (Monday to Friday)' },
+      { value: 'custom', label: 'Custom…' },
+    ];
+  }, [startMoment]);
+
+  const recurrenceSummaryLabel = useMemo(
+    () => recurrenceMenuItems.find((x) => x.value === recurrencePattern)?.label ?? 'Does not repeat',
+    [recurrenceMenuItems, recurrencePattern]
+  );
+
+  const showCompactEventTime = !editingId && composerTab === 'event' && !timeComposerExpanded;
+
+  const showCompactCalendarRow = !editingId && composerTab === 'event' && !calendarRowExpanded;
+
+  const compactEventTimePrimary = useMemo(() => {
+    if (!startMoment?.isValid?.() || !endMoment?.isValid?.()) return '';
+    if (allDay) {
+      const same = startMoment.format('YYYY-MM-DD') === endMoment.format('YYYY-MM-DD');
+      if (same) return startMoment.format('dddd, MMMM D');
+      return `${startMoment.format('dddd, MMMM D')} – ${endMoment.format('dddd, MMMM D')}`;
+    }
+    const sameCal = startMoment.format('YYYY-MM-DD') === endMoment.format('YYYY-MM-DD');
+    if (sameCal) {
+      return `${startMoment.format('dddd, MMMM D')}  ${startMoment.format('h:mma')} – ${endMoment.format('h:mma')}`;
+    }
+    return `${startMoment.format('ddd, MMM D, h:mma')} – ${endMoment.format('ddd, MMM D, h:mma')}`;
+  }, [allDay, startMoment, endMoment]);
+
+  useEffect(() => {
+    // Keep internal eventType aligned with the composer tab.
+    if (composerTab === 'task') setEventType('task');
+    else if (composerTab === 'appointment') setEventType('meeting');
+  }, [composerTab]);
+
+  useEffect(() => {
+    if (composerTab === 'task' || composerTab === 'appointment') setTimeComposerExpanded(true);
+  }, [composerTab]);
+
   const openNewDialog = (startAt, endAt, allDayEvent) => {
     setEditingId(null);
     setComposerTab('event');
@@ -293,36 +565,76 @@ export default function CalendarPage() {
     setTaskDeadline(null);
     setTaskList('My Tasks');
     setEventType('meeting');
+    setEventColor(theme.palette.primary.main);
+    setAvailability('busy');
+    setVisibilityKind('default');
+    setReminderMinutesBefore(30);
+    setRecurrencePattern('none');
+    setRecurrenceExtras({ until: null, exceptions: [] });
+    setEditingEventSnapshot(null);
+    const br = getBrowserTimeZone();
+    setStartTimeZone(br);
+    setEndTimeZone(br);
+    setSeparateEndTimeZone(false);
     setAllDay(!!allDayEvent);
     if (allDayEvent) {
       setStart(toInputDate(startAt));
       setEnd(toInputDate(endAt || startAt));
     } else {
-      setStart(toInputDatetimeLocal(startAt));
-      setEnd(toInputDatetimeLocal(endAt || new Date(new Date(startAt).getTime() + 60 * 60 * 1000)));
+      const en = endAt || new Date(new Date(startAt).getTime() + 60 * 60 * 1000);
+      setStart(new Date(startAt).toISOString());
+      setEnd(new Date(en).toISOString());
     }
+    setTimeComposerExpanded(false);
+    setCalendarRowExpanded(false);
     setOpen(true);
   };
 
   const openEditDialog = (rbcEvent) => {
     const ev = rbcEvent.resource;
+    setTimeComposerExpanded(true);
+    setCalendarRowExpanded(true);
+    setEditingEventSnapshot({ ...ev, start: ev.start, end: ev.end });
+    setRecurrenceExtras({
+      until: ev.recurrence?.until ? new Date(ev.recurrence.until).toISOString() : null,
+      exceptions: Array.isArray(ev.recurrence?.exceptions)
+        ? ev.recurrence.exceptions.map((d) => new Date(d).toISOString())
+        : [],
+    });
     setEditingId(ev._id);
     setComposerTab(ev.eventType === 'task' ? 'task' : 'event');
     setTitle(ev.title || '');
     setLocation(ev.location || '');
     setDescription(ev.description || '');
-    setGuests('');
-    setMeetNote('');
+    setGuests(Array.isArray(ev.guestEmails) ? ev.guestEmails.join(', ') : '');
+    setMeetNote(ev.meetingLink || '');
     setTaskDeadline(null);
     setTaskList('My Tasks');
     setEventType(ev.eventType || 'meeting');
+    setEventColor(ev.eventColor || theme.palette.primary.main);
+    setAvailability(ev.availability || 'busy');
+    setVisibilityKind(ev.visibilityKind || (ev.visibility === 'workspace' ? 'public' : 'default'));
+    setReminderMinutesBefore(typeof ev.reminderMinutesBefore === 'number' ? ev.reminderMinutesBefore : 30);
+    const rp = ev.recurrence?.pattern;
+    setRecurrencePattern(rp && rp !== 'none' ? rp : 'none');
     setAllDay(!!ev.allDay);
     if (ev.allDay) {
       setStart(toInputDate(ev.start));
       setEnd(toInputDate(ev.end));
+      setStartTimeZone(getBrowserTimeZone());
+      setEndTimeZone(getBrowserTimeZone());
+      setSeparateEndTimeZone(false);
     } else {
-      setStart(toInputDatetimeLocal(ev.start));
-      setEnd(toInputDatetimeLocal(ev.end));
+      const stz = ev.startTimeZone || getBrowserTimeZone();
+      const sep = !!ev.separateEndTimeZone;
+      const etz = sep && ev.endTimeZone ? ev.endTimeZone : stz;
+      setStartTimeZone(stz);
+      setEndTimeZone(etz);
+      setSeparateEndTimeZone(sep);
+      const siso = typeof ev.start === 'string' ? ev.start : new Date(ev.start).toISOString();
+      const eiso = typeof ev.end === 'string' ? ev.end : new Date(ev.end).toISOString();
+      setStart(siso);
+      setEnd(eiso);
     }
     setOpen(true);
   };
@@ -334,27 +646,61 @@ export default function CalendarPage() {
       startDate = parseInputDateOnly(start, false);
       endDate = parseInputDateOnly(end, true);
     } else {
-      startDate = start ? new Date(start) : null;
-      endDate = end ? new Date(end) : null;
+      const stz = startTimeZone || getBrowserTimeZone();
+      const etz = separateEndTimeZone ? endTimeZone || stz : stz;
+      startDate = start ? new Date(wallMomentToUtcIso(startMoment, stz)) : null;
+      endDate = end ? new Date(wallMomentToUtcIso(endMoment, etz)) : null;
     }
-
-    const guestsLine = guests.trim() ? `Guests: ${guests.trim()}` : '';
-    const meetLine = meetNote.trim() ? `Meet: ${meetNote.trim()}` : '';
-    const descParts = [description.trim(), guestsLine, meetLine].filter(Boolean);
-    const combinedDescription = descParts.join('\n');
 
     const mappedType =
       composerTab === 'task' ? 'task' : composerTab === 'appointment' ? 'meeting' : eventType;
 
+    const parsedGuestEmails = guests
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const mappedVisibility = visibilityKind === 'public' ? 'workspace' : 'personal';
+
+    const recPat =
+      composerTab === 'task'
+        ? 'none'
+        : recurrencePattern === 'custom'
+          ? 'none'
+          : recurrencePattern;
+
+    const recurrencePayload =
+      recPat === 'none'
+        ? { pattern: 'none', until: null, exceptions: [] }
+        : {
+            pattern: recPat,
+            until: recurrenceExtras.until,
+            exceptions: recurrenceExtras.exceptions,
+          };
+
     return {
       title: title.trim() || '(No title)',
-      description: combinedDescription,
+      description: description.trim(),
       start: startDate?.toISOString(),
       end: endDate?.toISOString(),
       allDay,
       location,
       eventType: mappedType,
-      visibility: 'personal',
+      visibility: mappedVisibility,
+      visibilityKind,
+      guestEmails: parsedGuestEmails,
+      meetingLink: meetNote.trim(),
+      eventColor,
+      availability,
+      reminderMinutesBefore,
+      recurrence: recurrencePayload,
+      startTimeZone: allDay ? '' : startTimeZone || getBrowserTimeZone(),
+      endTimeZone: allDay
+        ? ''
+        : separateEndTimeZone
+          ? endTimeZone || (startTimeZone || getBrowserTimeZone())
+          : startTimeZone || getBrowserTimeZone(),
+      separateEndTimeZone: allDay ? false : separateEndTimeZone,
     };
   };
 
@@ -381,24 +727,94 @@ export default function CalendarPage() {
       }
       setOpen(false);
       setEditingId(null);
+      setEditingEventSnapshot(null);
+      setRecurrenceExtras({ until: null, exceptions: [] });
+      const br2 = getBrowserTimeZone();
+      setStartTimeZone(br2);
+      setEndTimeZone(br2);
+      setSeparateEndTimeZone(false);
       load();
-    } catch (e) {
+    } catch {
       toast.error(editingId ? 'Update failed' : 'Save failed');
     }
   };
 
-  const remove = async () => {
-    if (!editingId) return;
-    if (!window.confirm('Delete this event?')) return;
+  const closeComposerAfterDelete = () => {
+    setOpen(false);
+    setDeleteRecurringOpen(false);
+    setEditingId(null);
+    setEditingEventSnapshot(null);
+    setRecurrenceExtras({ until: null, exceptions: [] });
+    const br = getBrowserTimeZone();
+    setStartTimeZone(br);
+    setEndTimeZone(br);
+    setSeparateEndTimeZone(false);
+  };
+
+  const executeDelete = async (query) => {
     try {
-      await axiosInstance.delete(API_PATHS.BUSINESS.CALENDAR_EVENT(editingId));
+      await axiosInstance.delete(API_PATHS.BUSINESS.CALENDAR_EVENT(editingId), {
+        ...(query ? { params: query } : {}),
+      });
       toast.success('Deleted');
-      setOpen(false);
-      setEditingId(null);
+      closeComposerAfterDelete();
       load();
-    } catch (e) {
+    } catch {
       toast.error('Delete failed');
     }
+  };
+
+  const remove = () => {
+    if (!editingId) return;
+    const p = editingEventSnapshot?.recurrence?.pattern;
+    if (p && p !== 'none') {
+      setDeleteScope('this');
+      setDeleteRecurringOpen(true);
+      return;
+    }
+    if (!window.confirm('Delete this event?')) return;
+    void executeDelete();
+  };
+
+  const confirmRecurringDelete = () => {
+    const raw = editingEventSnapshot?.start;
+    if (!raw) {
+      toast.error('Missing event time');
+      return;
+    }
+    const instanceStart = new Date(raw).toISOString();
+    const scope =
+      deleteScope === 'this' ? 'single' : deleteScope === 'following' ? 'following' : 'all';
+    void executeDelete({ scope, instanceStart });
+  };
+
+  const openTimeZoneDialog = () => {
+    if (allDay) return;
+    setTzDraftSeparate(separateEndTimeZone);
+    const stz = startTimeZone || getBrowserTimeZone();
+    const etz = separateEndTimeZone ? endTimeZone || stz : stz;
+    setTzDraftStart(stz);
+    setTzDraftEnd(etz);
+    setTimeZoneDialogOpen(true);
+  };
+
+  const confirmTimeZoneDialog = () => {
+    const stz = tzDraftStart || getBrowserTimeZone();
+    const etz = tzDraftSeparate ? tzDraftEnd || stz : stz;
+    setSeparateEndTimeZone(tzDraftSeparate);
+    setStartTimeZone(stz);
+    setEndTimeZone(etz);
+    if (!allDay && start && end) {
+      setStart(wallMomentToUtcIso(startMoment, stz));
+      setEnd(wallMomentToUtcIso(endMoment, etz));
+    }
+    setTimeZoneDialogOpen(false);
+  };
+
+  const applyCurrentTimeZoneDraft = () => {
+    const b = getBrowserTimeZone();
+    setTzDraftStart(b);
+    setTzDraftEnd(b);
   };
 
   const onSelectSlot = useCallback(
@@ -489,6 +905,31 @@ export default function CalendarPage() {
     else if (currentView === Views.DAY) setCurrentDate(m.add(delta, 'day').toDate());
     else setCurrentDate(m.add(delta, 'month').toDate());
   };
+
+  const EVENT_COLOR_OPTIONS = [
+    { value: '#4f46e5', label: 'Blue' },
+    { value: '#0d9488', label: 'Teal' },
+    { value: '#059669', label: 'Green' },
+    { value: '#dc2626', label: 'Red' },
+    { value: '#f97316', label: 'Orange' },
+    { value: '#e11d48', label: 'Pink' },
+    { value: '#64748b', label: 'Gray' },
+  ];
+
+  const visibilityLabel =
+    visibilityKind === 'public' ? 'Public' : visibilityKind === 'private' ? 'Private' : 'Default';
+
+  /** Google-style summary under calendar row (e.g. "Default visibility"). */
+  const visibilitySummaryLabel =
+    visibilityKind === 'public' ? 'Public' : visibilityKind === 'private' ? 'Private' : 'Default visibility';
+
+  const reminderLabel =
+    reminderMinutesBefore === 0 ? 'at the start time' : `${reminderMinutesBefore} minutes before`;
+
+  const reminderSummaryLabel =
+    reminderMinutesBefore === 0
+      ? 'Notify at the start time'
+      : `Notify ${reminderMinutesBefore} minutes before`;
 
   const displayName = user?.name || 'Me';
 
@@ -724,6 +1165,14 @@ export default function CalendarPage() {
                       color: cal.showMoreColor,
                       fontWeight: 700,
                     },
+                    '& .rbc-slot-selection': {
+                      backgroundColor: alpha(theme.palette.primary.main, isDark ? 0.38 : 0.32),
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.75)}`,
+                      color: cal.text,
+                    },
+                    '& .rbc-selected-cell': {
+                      backgroundColor: alpha(theme.palette.primary.main, isDark ? 0.22 : 0.18),
+                    },
                   }}
                 >
                   <DnDCalendar
@@ -742,7 +1191,14 @@ export default function CalendarPage() {
                     onSelectEvent={onSelectEvent}
                     selectable
                     popup
-                    draggableAccessor={() => true}
+                    draggableAccessor={(e) => {
+                      const p = e.resource?.recurrence?.pattern;
+                      return !p || p === 'none';
+                    }}
+                    resizableAccessor={(e) => {
+                      const p = e.resource?.recurrence?.pattern;
+                      return !p || p === 'none';
+                    }}
                     resizable
                     onEventDrop={onEventDrop}
                     onEventResize={onEventResize}
@@ -779,10 +1235,15 @@ export default function CalendarPage() {
               color: cal.text,
               border: `1px solid ${cal.border}`,
               overflow: 'hidden',
+              maxHeight: { xs: 'calc(100dvh - 24px)', sm: 'min(90dvh, 880px)' },
+              width: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              m: { xs: 1, sm: 2 },
             },
           }}
         >
-          <Stack direction="row" alignItems="center" sx={{ px: 2, pt: 1.25 }}>
+          <Stack direction="row" alignItems="center" sx={{ px: 2, pt: 1.25, flexShrink: 0 }}>
             <IconButton size="small" sx={{ color: cal.muted, mr: 0.5 }} aria-label="handle">
               <DragIndicatorIcon fontSize="small" />
             </IconButton>
@@ -792,7 +1253,17 @@ export default function CalendarPage() {
             </IconButton>
           </Stack>
 
-          <Box sx={{ px: 3, pb: 2 }}>
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              overscrollBehavior: 'contain',
+              px: 3,
+              pb: 2,
+              WebkitOverflowScrolling: 'touch',
+            }}
+          >
             <TextField
               placeholder="Add title"
               value={title}
@@ -903,7 +1374,71 @@ export default function CalendarPage() {
             <Stack spacing={2} sx={{ mt: 2.5 }}>
               <Stack direction="row" spacing={1.25} alignItems="flex-start">
                 <AccessTimeIcon sx={{ color: cal.muted, mt: 0.75 }} />
-                <Box sx={{ flex: 1 }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  {showCompactEventTime ? (
+                    <>
+                      <ButtonBase
+                        type="button"
+                        onClick={() => setTimeComposerExpanded(true)}
+                        sx={{ display: 'block', width: '100%', textAlign: 'left', borderRadius: 1, py: 0.25 }}
+                      >
+                        <Typography variant="body1" sx={{ color: cal.text, fontWeight: 600 }}>
+                          {compactEventTimePrimary}
+                        </Typography>
+                      </ButtonBase>
+                      <Stack direction="row" alignItems="center" spacing={0.5} sx={{ flexWrap: 'wrap', mt: 0.25 }}>
+                        {!allDay ? (
+                          <>
+                            <Typography
+                              variant="caption"
+                              component="button"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openTimeZoneDialog();
+                              }}
+                              sx={{
+                                border: 'none',
+                                background: 'none',
+                                p: 0,
+                                cursor: 'pointer',
+                                color: cal.linkColor,
+                                fontWeight: 700,
+                                font: 'inherit',
+                                '&:hover': { textDecoration: 'underline' },
+                              }}
+                            >
+                              Time zone
+                            </Typography>
+                            <Typography component="span" variant="caption" sx={{ color: cal.muted, userSelect: 'none' }}>
+                              •
+                            </Typography>
+                          </>
+                        ) : null}
+                        <ButtonBase
+                          type="button"
+                          disabled={composerTab === 'task'}
+                          onClick={() => setTimeComposerExpanded(true)}
+                          sx={{
+                            border: 'none',
+                            background: 'transparent',
+                            p: 0,
+                            display: 'inline',
+                            textAlign: 'left',
+                            cursor: composerTab === 'task' ? 'default' : 'pointer',
+                            '&.Mui-disabled': { opacity: 1, color: 'inherit' },
+                          }}
+                        >
+                          <Typography variant="caption" sx={{ color: cal.muted, fontWeight: 500 }}>
+                            {recurrenceSummaryLabel}
+                          </Typography>
+                        </ButtonBase>
+                      </Stack>
+                    </>
+                  ) : null}
+
+                  <Collapse in={!showCompactEventTime} unmountOnExit={false}>
+                    <Stack spacing={0}>
                   {allDay ? (
                     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                       <DatePicker
@@ -920,6 +1455,7 @@ export default function CalendarPage() {
                       <DatePicker
                         label="End date"
                         value={moment(end, 'YYYY-MM-DD', true).isValid() ? moment(end, 'YYYY-MM-DD') : null}
+                        minDate={moment(start, 'YYYY-MM-DD', true).isValid() ? moment(start, 'YYYY-MM-DD') : undefined}
                         onChange={(v) => v && setEnd(v.format('YYYY-MM-DD'))}
                         slotProps={{
                           textField: {
@@ -930,98 +1466,179 @@ export default function CalendarPage() {
                       />
                     </Stack>
                   ) : (
-                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ md: 'center' }}>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }} flexWrap="wrap">
                       <DatePicker
-                        label="Date"
+                        label=""
+                        format="dddd, MMMM D"
                         value={startMoment}
                         onChange={(v) => {
                           if (!v) return;
-                          const nextStart = v
-                            .clone()
-                            .hour(startMoment.hour())
-                            .minute(startMoment.minute())
-                            .second(0)
-                            .millisecond(0);
-                          const duration = Math.max(15 * 60 * 1000, endMoment.valueOf() - startMoment.valueOf());
-                          const nextEnd = nextStart.clone().add(duration, 'ms');
-                          setStartMoment(nextStart);
-                          setEndMoment(nextEnd);
-                          setStart(nextStart.format('YYYY-MM-DDTHH:mm'));
-                          setEnd(nextEnd.format('YYYY-MM-DDTHH:mm'));
+                          const stz = startTimeZone || getBrowserTimeZone();
+                          const durMs = moment.utc(end).diff(moment.utc(start));
+                          const wallStart = moment.tz(
+                            {
+                              year: v.year(),
+                              month: v.month(),
+                              date: v.date(),
+                              hour: startMoment.hour(),
+                              minute: startMoment.minute(),
+                              second: 0,
+                              millisecond: 0,
+                            },
+                            stz
+                          );
+                          const nextStartUtc = wallStart.utc().toISOString();
+                          const nextEndUtc = moment.utc(nextStartUtc).add(durMs, 'ms').toISOString();
+                          setStart(nextStartUtc);
+                          setEnd(nextEndUtc);
+                        }}
+                        slots={{
+                          openPickerIcon: () => null,
                         }}
                         slotProps={{
+                          ...meetingCalendarSlotProps,
                           textField: {
                             size: 'small',
-                            sx: { ...googleFieldSx(cal.text, cal.border, theme), minWidth: 170 },
+                            sx: meetingDateFieldSx,
                           },
                         }}
                       />
+
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap' }}>
-                        <TimePicker
-                          label="Start"
-                          value={startMoment}
-                          onChange={(v) => {
-                            if (!v) return;
-                            const nextStart = startMoment.clone().hour(v.hour()).minute(v.minute()).second(0).millisecond(0);
-                            const duration = Math.max(15 * 60 * 1000, endMoment.valueOf() - startMoment.valueOf());
-                            const nextEnd = nextStart.clone().add(duration, 'ms');
-                            setStartMoment(nextStart);
-                            setEndMoment(nextEnd);
-                            setStart(nextStart.format('YYYY-MM-DDTHH:mm'));
-                            setEnd(nextEnd.format('YYYY-MM-DDTHH:mm'));
+                        <Button
+                          disableElevation
+                          onClick={(e) => {
+                            setEndTimeMenuAnchor(null);
+                            setStartTimeMenuAnchor(e.currentTarget);
                           }}
-                          slotProps={{
-                            textField: {
-                              size: 'small',
-                              sx: { ...googleFieldSx(cal.text, cal.border, theme), minWidth: 120 },
-                            },
+                          sx={{
+                            ...meetingTimeChipSx,
+                            ...(Boolean(startTimeMenuAnchor) && {
+                              boxShadow: (t) => `inset 0 -2px 0 ${t.palette.primary.main}`,
+                            }),
                           }}
-                        />
-                        <Typography sx={{ color: cal.muted }}>–</Typography>
-                        <TimePicker
-                          label="End"
-                          value={endMoment}
-                          onChange={(v) => {
-                            if (!v) return;
-                            const nextEnd = endMoment.clone().hour(v.hour()).minute(v.minute()).second(0).millisecond(0);
-                            setEndMoment(nextEnd);
-                            setEnd(nextEnd.format('YYYY-MM-DDTHH:mm'));
+                        >
+                          {startMoment.format('h:mma')}
+                        </Button>
+                        <Typography component="span" sx={{ color: cal.muted, fontWeight: 700, userSelect: 'none' }}>
+                          —
+                        </Typography>
+                        <Button
+                          disableElevation
+                          onClick={(e) => {
+                            setStartTimeMenuAnchor(null);
+                            setEndTimeMenuAnchor(e.currentTarget);
                           }}
-                          slotProps={{
-                            textField: {
-                              size: 'small',
-                              sx: { ...googleFieldSx(cal.text, cal.border, theme), minWidth: 120 },
-                            },
+                          sx={{
+                            ...meetingTimeChipSx,
+                            minWidth: 96,
+                            ...(Boolean(endTimeMenuAnchor) && {
+                              boxShadow: (t) => `inset 0 -2px 0 ${t.palette.primary.main}`,
+                            }),
                           }}
-                        />
+                        >
+                          {endMoment.format('h:mma')}
+                        </Button>
                       </Stack>
                     </Stack>
                   )}
-                  <Typography variant="caption" sx={{ color: cal.muted, display: 'block', mt: 1 }}>
-                    Time zone • Does not repeat
-                  </Typography>
-                  <FormControlLabel
-                    sx={{ mt: 1, alignItems: 'center' }}
-                    control={
-                      <Checkbox
-                        checked={allDay}
-                        size="small"
-                        onChange={(e) => {
-                          const next = e.target.checked;
-                          setAllDay(next);
-                          if (next) {
-                            setStart(startMoment.format('YYYY-MM-DD'));
-                            setEnd(endMoment.format('YYYY-MM-DD'));
-                          } else {
-                            setStart(startMoment.format('YYYY-MM-DDTHH:mm'));
-                            setEnd(endMoment.format('YYYY-MM-DDTHH:mm'));
-                          }
+
+                  <Stack direction="row" alignItems="center" spacing={2} sx={{ mt: 1 }}>
+                    <FormControlLabel
+                      sx={{ m: 0 }}
+                      control={
+                        <Checkbox
+                          checked={allDay}
+                          size="small"
+                          onChange={(e) => {
+                            const next = e.target.checked;
+                            setAllDay(next);
+                            if (next) {
+                              setStart(startMoment.format('YYYY-MM-DD'));
+                              setEnd(endMoment.format('YYYY-MM-DD'));
+                            } else {
+                              const stz = startTimeZone || getBrowserTimeZone();
+                              const etz = separateEndTimeZone ? endTimeZone || stz : stz;
+                              setStart(wallMomentToUtcIso(startMoment, stz));
+                              setEnd(wallMomentToUtcIso(endMoment, etz));
+                            }
+                          }}
+                          sx={{ color: isDark ? theme.palette.primary.light : theme.palette.primary.main }}
+                        />
+                      }
+                      label={<Typography variant="body2">All day</Typography>}
+                    />
+                    {!allDay ? (
+                      <Typography
+                        variant="caption"
+                        component="button"
+                        type="button"
+                        onClick={openTimeZoneDialog}
+                        sx={{
+                          border: 'none',
+                          background: 'none',
+                          p: 0,
+                          cursor: 'pointer',
+                          color: cal.linkColor,
+                          fontWeight: 700,
+                          font: 'inherit',
+                          '&:hover': { textDecoration: 'underline' },
                         }}
-                        sx={{ color: isDark ? theme.palette.primary.light : theme.palette.primary.main }}
-                      />
-                    }
-                    label={<Typography variant="body2">All day</Typography>}
-                  />
+                      >
+                        Time zone
+                      </Typography>
+                    ) : null}
+                  </Stack>
+
+                  {composerTab !== 'task' ? (
+                    <FormControl fullWidth size="small" sx={{ mt: 1 }}>
+                      <Select
+                        value={recurrenceMenuItems.some((x) => x.value === recurrencePattern) ? recurrencePattern : 'none'}
+                        displayEmpty
+                        IconComponent={ExpandMoreIcon}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === 'custom') {
+                            toast('Custom recurrence is not available yet.');
+                            return;
+                          }
+                          setRecurrencePattern(v);
+                        }}
+                        renderValue={(v) =>
+                          recurrenceMenuItems.find((x) => x.value === v)?.label ?? 'Does not repeat'
+                        }
+                        sx={{
+                          color: cal.text,
+                          borderRadius: 2,
+                          bgcolor: isDark ? alpha('#fff', 0.08) : alpha('#000', 0.06),
+                          '& fieldset': { border: 'none' },
+                          '&:hover fieldset': { border: 'none' },
+                          '&.Mui-focused fieldset': { border: 'none' },
+                          '& .MuiSelect-select': { py: 1, px: 1.5, display: 'flex', alignItems: 'center' },
+                          '& .MuiSelect-icon': { color: cal.muted },
+                          '&.Mui-focused': {
+                            boxShadow: `inset 0 -2px 0 ${theme.palette.primary.main}`,
+                          },
+                        }}
+                        MenuProps={{
+                          PaperProps: {
+                            sx: {
+                              ...meetingTimeMenuPaperSx,
+                              maxHeight: 320,
+                            },
+                          },
+                        }}
+                      >
+                        {recurrenceMenuItems.map((item) => (
+                          <MenuItem key={item.value} value={item.value}>
+                            {item.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  ) : null}
+                    </Stack>
+                  </Collapse>
                 </Box>
               </Stack>
 
@@ -1042,7 +1659,7 @@ export default function CalendarPage() {
                   <Stack direction="row" spacing={1.25} alignItems="flex-start">
                     <VideocamOutlinedIcon sx={{ color: cal.muted, mt: 0.75 }} />
                     <TextField
-                      placeholder="Add meeting link / notes"
+                      placeholder="Add Google Meet video conferencing"
                       value={meetNote}
                       onChange={(e) => setMeetNote(e.target.value)}
                       fullWidth
@@ -1113,7 +1730,7 @@ export default function CalendarPage() {
                 <Stack direction="row" spacing={1.25} alignItems="flex-start">
                   <NotesOutlinedIcon sx={{ color: cal.muted, mt: 0.75 }} />
                   <TextField
-                    placeholder="Add description"
+                    placeholder="Add description or Google Drive attachment"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     fullWidth
@@ -1128,22 +1745,125 @@ export default function CalendarPage() {
               {composerTab === 'event' ? (
                 <Stack direction="row" spacing={1.25} alignItems="flex-start">
                   <CalendarMonthOutlinedIcon sx={{ color: cal.muted, mt: 0.75 }} />
-                  <Box sx={{ flex: 1 }}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Box sx={{ width: 10, height: 10, borderRadius: 99, bgcolor: theme.palette.primary.main }} />
-                      <Typography fontWeight={700}>{displayName}</Typography>
-                    </Stack>
-                    <Typography variant="caption" sx={{ color: cal.muted }}>
-                      Busy • Default visibility • Notify 30 minutes before
-                    </Typography>
-                    <FormControl fullWidth size="small" sx={{ mt: 1.5, ...googleFieldSx(cal.text, cal.border, theme) }}>
-                      <InputLabel>Event type</InputLabel>
-                      <Select label="Event type" value={eventType} onChange={(e) => setEventType(e.target.value)}>
-                        <MenuItem value="meeting">Meeting</MenuItem>
-                        <MenuItem value="reminder">Reminder</MenuItem>
-                        <MenuItem value="other">Other</MenuItem>
-                      </Select>
-                    </FormControl>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    {showCompactCalendarRow ? (
+                      <ButtonBase
+                        type="button"
+                        onClick={() => setCalendarRowExpanded(true)}
+                        sx={{
+                          display: 'block',
+                          width: '100%',
+                          textAlign: 'left',
+                          borderRadius: 1,
+                          py: 0.25,
+                          alignItems: 'stretch',
+                        }}
+                      >
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                          <Typography variant="body1" sx={{ color: cal.text, fontWeight: 600 }}>
+                            {displayName}
+                          </Typography>
+                          <Box
+                            component="span"
+                            sx={{
+                              width: 10,
+                              height: 10,
+                              borderRadius: 999,
+                              flexShrink: 0,
+                              bgcolor: eventColor || theme.palette.primary.main,
+                            }}
+                          />
+                        </Stack>
+                        <Typography variant="caption" sx={{ color: cal.muted, fontWeight: 500, display: 'block', mt: 0.25 }}>
+                          {availability === 'busy' ? 'Busy' : 'Free'} • {visibilitySummaryLabel} • {reminderSummaryLabel}
+                        </Typography>
+                      </ButtonBase>
+                    ) : null}
+
+                    <Collapse in={!showCompactCalendarRow} unmountOnExit={false}>
+                      <Stack spacing={1.25} sx={{ pt: showCompactCalendarRow ? 0 : 0 }}>
+                        {!showCompactCalendarRow ? (
+                          <>
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                              <Typography variant="body1" sx={{ color: cal.text, fontWeight: 600 }}>
+                                {displayName}
+                              </Typography>
+                              <Box
+                                component="span"
+                                sx={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: 999,
+                                  flexShrink: 0,
+                                  bgcolor: eventColor || theme.palette.primary.main,
+                                }}
+                              />
+                            </Stack>
+                            <Typography variant="caption" sx={{ color: cal.muted, fontWeight: 500, display: 'block' }}>
+                              {availability === 'busy' ? 'Busy' : 'Free'} • {visibilitySummaryLabel} • {reminderSummaryLabel}
+                            </Typography>
+                          </>
+                        ) : null}
+
+                        <FormControl fullWidth size="small" sx={{ ...googleFieldSx(cal.text, cal.border, theme) }}>
+                          <InputLabel>Event color</InputLabel>
+                          <Select
+                            label="Event color"
+                            value={eventColor}
+                            onChange={(e) => setEventColor(e.target.value)}
+                          >
+                            {EVENT_COLOR_OPTIONS.map((opt) => (
+                              <MenuItem key={opt.value} value={opt.value}>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  <Box sx={{ width: 12, height: 12, borderRadius: 999, bgcolor: opt.value }} />
+                                  <Typography variant="body2">{opt.label}</Typography>
+                                </Stack>
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+
+                        <FormControl fullWidth size="small" sx={{ ...googleFieldSx(cal.text, cal.border, theme) }}>
+                          <InputLabel>Busy / Free</InputLabel>
+                          <Select
+                            label="Busy / Free"
+                            value={availability}
+                            onChange={(e) => setAvailability(e.target.value)}
+                          >
+                            <MenuItem value="busy">Busy</MenuItem>
+                            <MenuItem value="free">Free</MenuItem>
+                          </Select>
+                        </FormControl>
+
+                        <FormControl fullWidth size="small" sx={{ ...googleFieldSx(cal.text, cal.border, theme) }}>
+                          <InputLabel>Visibility</InputLabel>
+                          <Select
+                            label="Visibility"
+                            value={visibilityKind}
+                            onChange={(e) => setVisibilityKind(e.target.value)}
+                          >
+                            <MenuItem value="default">Default</MenuItem>
+                            <MenuItem value="public">Public</MenuItem>
+                            <MenuItem value="private">Private</MenuItem>
+                          </Select>
+                        </FormControl>
+
+                        <FormControl fullWidth size="small" sx={{ ...googleFieldSx(cal.text, cal.border, theme) }}>
+                          <InputLabel>Notifications</InputLabel>
+                          <Select
+                            label="Notifications"
+                            value={reminderMinutesBefore}
+                            onChange={(e) => setReminderMinutesBefore(Number(e.target.value))}
+                          >
+                            <MenuItem value={30}>30 minutes before</MenuItem>
+                            <MenuItem value={15}>15 minutes before</MenuItem>
+                            <MenuItem value={10}>10 minutes before</MenuItem>
+                            <MenuItem value={5}>5 minutes before</MenuItem>
+                            <MenuItem value={0}>At start time</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Stack>
+                    </Collapse>
                   </Box>
                 </Stack>
               ) : composerTab === 'task' ? (
@@ -1151,10 +1871,21 @@ export default function CalendarPage() {
                   <CalendarMonthOutlinedIcon sx={{ color: cal.muted, mt: 0.75 }} />
                   <Box sx={{ flex: 1 }}>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Box sx={{ width: 10, height: 10, borderRadius: 99, bgcolor: theme.palette.primary.main }} />
-                      <Typography fontWeight={700}>{displayName}</Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                        {displayName}
+                      </Typography>
+                      <Box
+                        component="span"
+                        sx={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: 999,
+                          flexShrink: 0,
+                          bgcolor: theme.palette.primary.main,
+                        }}
+                      />
                     </Stack>
-                    <Typography variant="caption" sx={{ color: cal.muted }}>
+                    <Typography variant="caption" sx={{ color: cal.muted, fontWeight: 500 }}>
                       Free • Private
                     </Typography>
                   </Box>
@@ -1162,14 +1893,37 @@ export default function CalendarPage() {
               ) : (
                 <Stack direction="row" spacing={1.25} alignItems="flex-start">
                   <CalendarMonthOutlinedIcon sx={{ color: cal.muted, mt: 0.75 }} />
-                  <Typography fontWeight={700}>{displayName}</Typography>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                    <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                      {displayName}
+                    </Typography>
+                    <Box
+                      component="span"
+                      sx={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: 999,
+                        flexShrink: 0,
+                        bgcolor: theme.palette.primary.main,
+                      }}
+                    />
+                  </Stack>
                 </Stack>
               )}
             </Stack>
+          </Box>
 
-            <Divider sx={{ my: 2, borderColor: cal.border }} />
-
-            <Stack direction="row" alignItems="center" spacing={2}>
+          <Box
+            sx={{
+              flexShrink: 0,
+              px: 3,
+              pb: 2,
+              pt: 0,
+              bgcolor: cal.surfaceElevated,
+              borderTop: `1px solid ${cal.border}`,
+            }}
+          >
+            <Stack direction="row" alignItems="center" spacing={2} sx={{ pt: 1.5 }}>
               <Button sx={{ color: cal.linkColor, textTransform: 'none', fontWeight: 800 }}>
                 More options
               </Button>
@@ -1198,6 +1952,322 @@ export default function CalendarPage() {
             </Stack>
           </Box>
         </Dialog>
+
+        <Dialog
+          open={deleteRecurringOpen}
+          onClose={() => setDeleteRecurringOpen(false)}
+          maxWidth="xs"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 2,
+              bgcolor: cal.surfaceElevated,
+              color: cal.text,
+              border: `1px solid ${cal.border}`,
+            },
+          }}
+        >
+          <DialogTitle sx={{ fontWeight: 700, fontSize: '1.15rem', pb: 1 }}>Delete recurring event</DialogTitle>
+          <DialogContent>
+            <RadioGroup
+              value={deleteScope}
+              onChange={(e) => setDeleteScope(e.target.value)}
+              sx={{ gap: 0.5 }}
+            >
+              <FormControlLabel
+                value="this"
+                control={
+                  <Radio
+                    size="small"
+                    sx={{ color: isDark ? theme.palette.primary.light : theme.palette.primary.main }}
+                  />
+                }
+                label={<Typography variant="body2">This event</Typography>}
+                sx={{ color: cal.text, alignItems: 'center', m: 0 }}
+              />
+              <FormControlLabel
+                value="following"
+                control={
+                  <Radio
+                    size="small"
+                    sx={{ color: isDark ? theme.palette.primary.light : theme.palette.primary.main }}
+                  />
+                }
+                label={<Typography variant="body2">This and following events</Typography>}
+                sx={{ color: cal.text, alignItems: 'center', m: 0 }}
+              />
+              <FormControlLabel
+                value="all"
+                control={
+                  <Radio
+                    size="small"
+                    sx={{ color: isDark ? theme.palette.primary.light : theme.palette.primary.main }}
+                  />
+                }
+                label={<Typography variant="body2">All events</Typography>}
+                sx={{ color: cal.text, alignItems: 'center', m: 0 }}
+              />
+            </RadioGroup>
+          </DialogContent>
+          <DialogActions sx={{ px: 2, pb: 2, pt: 0, gap: 1 }}>
+            <Button
+              onClick={() => setDeleteRecurringOpen(false)}
+              sx={{ color: cal.muted, textTransform: 'none', fontWeight: 700 }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={confirmRecurringDelete}
+              sx={{
+                borderRadius: 999,
+                px: 2.5,
+                textTransform: 'none',
+                fontWeight: 800,
+                backgroundColor: cal.saveBtnBg,
+                color: cal.saveBtnColor,
+                boxShadow: 'none',
+                '&:hover': { backgroundColor: cal.saveBtnHoverBg, boxShadow: 'none' },
+              }}
+            >
+              OK
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog
+          open={timeZoneDialogOpen}
+          onClose={() => setTimeZoneDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: 2,
+              bgcolor: cal.surfaceElevated,
+              color: cal.text,
+              border: `1px solid ${cal.border}`,
+            },
+          }}
+        >
+          <DialogTitle sx={{ fontWeight: 700, fontSize: '1.15rem', pb: 1 }}>Event time zone</DialogTitle>
+          <DialogContent>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={tzDraftSeparate}
+                  size="small"
+                  onChange={(e) => {
+                    const c = e.target.checked;
+                    setTzDraftSeparate(c);
+                    if (!c) setTzDraftEnd(tzDraftStart);
+                  }}
+                  sx={{ color: isDark ? theme.palette.primary.light : theme.palette.primary.main }}
+                />
+              }
+              label={<Typography variant="body2">Use separate start and end time zones</Typography>}
+              sx={{ color: cal.text, mb: 1.5, alignItems: 'center' }}
+            />
+            <Stack direction="row" spacing={1} alignItems="flex-start">
+              <Stack spacing={2} sx={{ flex: 1, minWidth: 0 }}>
+                <Autocomplete
+                  size="small"
+                  options={timeZoneAutocompleteOptions}
+                  getOptionLabel={(o) => o.label}
+                  isOptionEqualToValue={(a, b) => !!a && !!b && a.value === b.value}
+                  value={timeZoneAutocompleteOptions.find((o) => o.value === tzDraftStart) ?? null}
+                  onChange={(_, v) => {
+                    if (!v) return;
+                    setTzDraftStart(v.value);
+                    if (!tzDraftSeparate) setTzDraftEnd(v.value);
+                  }}
+                  disableClearable
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Event start time zone"
+                      InputLabelProps={params.InputLabelProps}
+                      sx={googleFieldSx(cal.text, cal.border, theme)}
+                    />
+                  )}
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        bgcolor: cal.surfaceElevated,
+                        color: cal.text,
+                        border: `1px solid ${cal.border}`,
+                      },
+                    },
+                  }}
+                />
+                <Autocomplete
+                  size="small"
+                  disabled={!tzDraftSeparate}
+                  options={timeZoneAutocompleteOptions}
+                  getOptionLabel={(o) => o.label}
+                  isOptionEqualToValue={(a, b) => !!a && !!b && a.value === b.value}
+                  value={
+                    timeZoneAutocompleteOptions.find(
+                      (o) => o.value === (tzDraftSeparate ? tzDraftEnd : tzDraftStart)
+                    ) ?? null
+                  }
+                  onChange={(_, v) => v && setTzDraftEnd(v.value)}
+                  disableClearable
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Event end time zone"
+                      InputLabelProps={params.InputLabelProps}
+                      sx={{
+                        ...googleFieldSx(cal.text, cal.border, theme),
+                        ...(!tzDraftSeparate && { opacity: 0.55 }),
+                      }}
+                    />
+                  )}
+                  slotProps={{
+                    paper: {
+                      sx: {
+                        bgcolor: cal.surfaceElevated,
+                        color: cal.text,
+                        border: `1px solid ${cal.border}`,
+                      },
+                    },
+                  }}
+                />
+              </Stack>
+              <IconButton
+                size="small"
+                disabled={!tzDraftSeparate}
+                onClick={() => {
+                  const a = tzDraftStart;
+                  setTzDraftStart(tzDraftEnd);
+                  setTzDraftEnd(a);
+                }}
+                sx={{ color: cal.muted, mt: 3, flexShrink: 0 }}
+                aria-label="Swap time zones"
+              >
+                <ImportExportIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ px: 2, pb: 2, pt: 0, flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
+            <Button
+              onClick={applyCurrentTimeZoneDraft}
+              sx={{ color: cal.linkColor, textTransform: 'none', fontWeight: 700 }}
+            >
+              Use current time zone
+            </Button>
+            <Box sx={{ flex: 1, minWidth: 8 }} />
+            <Button
+              onClick={() => setTimeZoneDialogOpen(false)}
+              sx={{ color: cal.muted, textTransform: 'none', fontWeight: 700 }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              onClick={confirmTimeZoneDialog}
+              sx={{
+                borderRadius: 999,
+                px: 2.5,
+                textTransform: 'none',
+                fontWeight: 800,
+                backgroundColor: cal.saveBtnBg,
+                color: cal.saveBtnColor,
+                boxShadow: 'none',
+                '&:hover': { backgroundColor: cal.saveBtnHoverBg, boxShadow: 'none' },
+              }}
+            >
+              OK
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Menu
+          anchorEl={startTimeMenuAnchor}
+          open={Boolean(startTimeMenuAnchor) && open && !allDay}
+          onClose={() => setStartTimeMenuAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          slotProps={{
+            paper: {
+              sx: { ...meetingTimeMenuPaperSx, width: 152 },
+            },
+          }}
+          MenuListProps={{ dense: true, autoFocusItem: true }}
+        >
+          {startTimeDaySlots.map((m) => {
+            const selected =
+              m.clone().startOf('day').isSame(startMoment.clone().startOf('day')) &&
+              m.format('HH:mm') === startMoment.format('HH:mm');
+            return (
+              <MenuItem
+                key={m.valueOf()}
+                selected={selected}
+                onClick={() => {
+                  const stzig = startTimeZone || getBrowserTimeZone();
+                  const durMs = moment.utc(end).diff(moment.utc(start));
+                  const wallStart = moment.tz(
+                    {
+                      year: m.year(),
+                      month: m.month(),
+                      date: m.date(),
+                      hour: m.hour(),
+                      minute: m.minute(),
+                      second: 0,
+                      millisecond: 0,
+                    },
+                    stzig
+                  );
+                  const nextStartUtc = wallStart.utc().toISOString();
+                  const nextEndUtc = moment
+                    .utc(nextStartUtc)
+                    .add(Math.max(durMs, 15 * 60 * 1000), 'ms')
+                    .toISOString();
+                  setStart(nextStartUtc);
+                  setEnd(nextEndUtc);
+                  setStartTimeMenuAnchor(null);
+                }}
+              >
+                {m.format('h:mma')}
+              </MenuItem>
+            );
+          })}
+        </Menu>
+
+        <Menu
+          anchorEl={endTimeMenuAnchor}
+          open={Boolean(endTimeMenuAnchor) && open && !allDay}
+          onClose={() => setEndTimeMenuAnchor(null)}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          slotProps={{
+            paper: {
+              sx: { ...meetingTimeMenuPaperSx, minWidth: 232 },
+            },
+          }}
+          MenuListProps={{ dense: true, autoFocusItem: true }}
+        >
+          {endTimeSuggestionRows.map(({ endIso, timeLabel, durationLabel }) => {
+            const selected = end === endIso;
+            return (
+              <MenuItem
+                key={endIso}
+                selected={selected}
+                onClick={() => {
+                  const startUtcMs = moment.utc(start).valueOf();
+                  let next = endIso;
+                  if (moment.utc(next).valueOf() <= startUtcMs) {
+                    next = moment.utc(startUtcMs + 15 * 60 * 1000).toISOString();
+                  }
+                  setEnd(next);
+                  setEndTimeMenuAnchor(null);
+                }}
+              >
+                {`${timeLabel} (${durationLabel})`}
+              </MenuItem>
+            );
+          })}
+        </Menu>
       </LocalizationProvider>
     </Homelayout>
   );
