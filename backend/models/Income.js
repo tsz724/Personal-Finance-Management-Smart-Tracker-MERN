@@ -13,10 +13,13 @@ const incomeSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    category: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'IncomeCategory',
+    },
     source: {
         type: String,
-        required: true
-    },// e.g., Salary, Freelance, Investments, etc.
+    },
     date: {
         type: Date,
         default: Date.now

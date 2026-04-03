@@ -1,47 +1,44 @@
-import React from 'react';
-import {FaRegEye, FaRegEyeSlash} from 'react-icons/fa6';
+import React from "react";
+import TextField from "@mui/material/TextField";
+import InputAdornment from "@mui/material/InputAdornment";
+import IconButton from "@mui/material/IconButton";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
+const Input = ({ value, onChange, placeholder, label, type, autoComplete }) => {
+  const [showPassword, setShowPassword] = React.useState(false);
 
-const Input = ({ value, onChange, placeholder, label, type,autoComplete}) => {
-    const [showPassword, setShowPassword] = React.useState(false);
+  const isPassword = type === "password";
+  const inputType = isPassword ? (showPassword ? "text" : "password") : type;
 
-    const toggleShowPassword = () => {
-        setShowPassword(!showPassword);
-    };
-      
   return (
-    <div>
-        <label className="text-[13px] text-slate-800">{label}</label>
-
-        <div className="input-box">
-            <input
-                type={type === "password" ? (showPassword ? "text" : "password") : type}
-                placeholder={placeholder}
-                className="w-full bg-transparent outline-none"
-                value={value}
-                onChange={(e) => onChange(e)}
-                autoComplete={autoComplete}
-            />
-            {type === "password" && (
-              <>
-              {showPassword ? (
-                <FaRegEye
-                  size={22}
-                  className="text-primary cursor-pointer"
-                    onClick={() => toggleShowPassword()}
-                />
-                ) : (
-                <FaRegEyeSlash
-                  size={22}
-                  className="text-slate-400 cursor-pointer"
-                    onClick={() => toggleShowPassword()}
-                />
-                )
-              }
-              </>
-            )}
-        </div>
-    </div>
+    <TextField
+      label={label}
+      placeholder={placeholder}
+      type={inputType}
+      value={value}
+      onChange={onChange}
+      autoComplete={autoComplete}
+      margin="normal"
+      InputProps={
+        isPassword
+          ? {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle password"
+                    onClick={() => setShowPassword(!showPassword)}
+                    edge="end"
+                    size="small"
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }
+          : undefined
+      }
+    />
   );
 };
 

@@ -22,7 +22,9 @@ exports.getDashboardData = async (req, res) => {
         const incomeTransactions = await Income.find({
             user: userId,
             date: { $gte: new Date(Date.now() - 60*24*60*60*1000) }
-        }).sort({ date: -1 });
+        })
+            .populate('category', 'name icon')
+            .sort({ date: -1 });
 
         //Get total income for last 60 days
         const totalIncomeLast60Days = incomeTransactions.reduce((acc, curr) => acc + curr.amount, 0);
@@ -31,17 +33,27 @@ exports.getDashboardData = async (req, res) => {
         const expenseTransactions = await Expense.find({
             user: userId,
             date: { $gte: new Date(Date.now() - 60*24*60*60*1000) }
-        }).sort({ date: -1 });
+        })
+            .populate('expenseCategory', 'name icon')
+            .sort({ date: -1 });
 
         //Get total expenses for last 60 days
         const totalExpensesLast60Days = expenseTransactions.reduce((acc, curr) => acc + curr.amount, 0);
         
         //Fetch last 5 income and expense transactions
         const recentTransactions=[
-            ...(await Income.find({ user: userId }).sort({ date: -1 }).limit(5)).map(
+            ...(await Income.find({ user: userId })
+                .populate('category', 'name icon')
+                .sort({ date: -1 })
+                .limit(5)
+            ).map(
                 (txn)=>({ ...txn.toObject(), type: 'income' })
             ),
-            ...(await Expense.find({ user: userId }).sort({ date: -1 }).limit(5)).map(
+            ...(await Expense.find({ user: userId })
+                .populate('expenseCategory', 'name icon')
+                .sort({ date: -1 })
+                .limit(5)
+            ).map(
                 (txn)=>({ ...txn.toObject(), type: 'expense' })
             ),
         ].sort((a,b)=>b.date - a.date);
@@ -64,4 +76,4 @@ exports.getDashboardData = async (req, res) => {
         console.error('Error fetching dashboard data:', error);
         res.status(500).json({ message: 'Server error' });
     }
-        }
+};

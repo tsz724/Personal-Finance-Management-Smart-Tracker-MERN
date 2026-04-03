@@ -1,35 +1,36 @@
-import React from 'react';
-import CustomPieChart from '../Charts/CustomPieChart';
+import React from "react";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Typography from "@mui/material/Typography";
+import CustomPieChart from "../Charts/CustomPieChart";
 
-const colors=['#10b981','#ef4444','#2563EB'] //green,red,blue
+const colors = ["#10b981", "#ef4444", "#2563EB"];
 
 const FinanceOverview = ({ totalBalance, totalIncome, totalExpense }) => {
-  // Calculate data for the donut chart
   const chartData = [
-    { name: 'Income', value: totalIncome},
-    { name: 'Expense', value: totalExpense},
-    { name: 'Balance', value: Math.max(totalBalance, 0)},
+    { name: "Income", value: totalIncome },
+    { name: "Expense", value: totalExpense },
+    { name: "Balance", value: Math.max(totalBalance, 0) },
   ];
 
-  // Filter out zero values for cleaner chart
-  const filteredData = chartData.filter(item => item.value > 0);
+  const filteredData = chartData.filter((item) => item.value > 0);
 
   return (
-    <div className="card col-span-1 p-6">
-      <div className="flex items-center justify-between">
-        <h5 className="text-lg font-semibold">Financial Overview</h5>
-      </div>
-
-      <CustomPieChart
-        data={filteredData}
-        label="Total Balance"
-        totalAmount={`$${totalBalance}`}
-        colors={colors}
-        showTextAnchor
-      />
-    </div>
+    <Card sx={{ height: 1 }}>
+      <CardContent sx={{ p: 3 }}>
+        <Typography variant="h6" fontWeight={700} gutterBottom>
+          Financial overview
+        </Typography>
+        <CustomPieChart
+          data={filteredData}
+          label="Total balance"
+          totalAmount={`$${totalBalance}`}
+          colors={colors}
+          showTextAnchor
+        />
+      </CardContent>
+    </Card>
   );
-}
+};
 
 export default FinanceOverview;
-

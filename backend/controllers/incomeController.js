@@ -1,11 +1,15 @@
 const XLSX = require('xlsx');
+const { isValidObjectId } = require('mongoose');
 const Income = require('../models/Income');
+const IncomeCategory = require('../models/IncomeCategory');
 
 //Get incomes of the logged in user
 exports.getIncomes = async (req, res) => {
     const userId = req.user.id;
     try {
-        const incomes = await Income.find({ user: userId }).sort({ date: -1 });
+        const incomes = await Income.find({ user: userId })
+            .populate('category', 'name icon')
+            .sort({ date: -1 });
         res.status(200).json(incomes);
     } catch (error) {
         console.error('Error fetching incomes:', error);
@@ -17,18 +21,26 @@ exports.getIncomes = async (req, res) => {
 exports.addIncome = async (req, res) => {
     const userId = req.user.id;
     try {
-        const { icon, amount, source, date } = req.body;
+        const { icon, amount, category, date, source } = req.body;
 
-        //validation
-        if (!date || !amount || !source) {
+        if (!date || !amount || category == null || category === '') {
             return res.status(400).json({ message: 'Please provide all required fields.' });
         }
+        if (!isValidObjectId(category)) {
+            return res.status(400).json({ message: 'Invalid category.' });
+        }
+        const catDoc = await IncomeCategory.findOne({ _id: category, user: userId });
+        if (!catDoc) {
+            return res.status(400).json({ message: 'Category not found.' });
+        }
+
         const income = new Income({
             user: userId,
             icon,
             amount,
-            source,
-            date
+            category,
+            date,
+            ...(typeof source === 'string' && source.trim() ? { source: source.trim() } : {}),
         });
         
         await income.save();
@@ -44,12 +56,14 @@ exports.downloadexcel = async (req, res) => {
     const userId = req.user.id;
     
       try {
-        const income = await Income.find({ user: userId }).sort({ date: -1 });
-    
-        const excelData = income.map(income => ({
-          Date: income.date.toISOString().split("T")[0],
-          Source: income.source,
-          Amount: income.amount, 
+        const income = await Income.find({ user: userId })
+            .populate('category', 'name')
+            .sort({ date: -1 });
+
+        const excelData = income.map((row) => ({
+          Date: row.date.toISOString().split("T")[0],
+          Category: row.category?.name || row.source || '',
+          Amount: row.amount,
         }));
     
     

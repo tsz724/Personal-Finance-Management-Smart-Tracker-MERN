@@ -1,38 +1,34 @@
-import React,{useState,useEffect} from 'react'
-import Homelayout from '../../components/layout/Homelayout'
+import React, { useState, useEffect } from "react";
+import Homelayout from "../../components/layout/Homelayout";
 import { useUserAuth } from "../../hooks/useUserAuth";
-import ExpenseOverview from '../../components/Expense/ExpenseOverview';
+import ExpenseOverview from "../../components/Expense/ExpenseOverview";
 import { API_PATHS } from "../../utils/apiPaths";
 import axiosInstance from "../../utils/axiosInstance";
-import List from '../../components/Expense/List';
-import Modal from '../../components/Modal';
-import Deletealert from '../../components/Deletealert';
-import AddExpenseform from '../../components/Expense/AddExpenseform';
-import toast from 'react-hot-toast';
+import List from "../../components/Expense/List";
+import Modal from "../../components/Modal";
+import Deletealert from "../../components/Deletealert";
+import AddExpenseform from "../../components/Expense/AddExpenseform";
+import ExpenseCategoryManager from "../../components/Expense/ExpenseCategoryManager";
+import toast from "react-hot-toast";
+import Stack from "@mui/material/Stack";
 
 const Expense = () => {
   useUserAuth();
 
   const [expenseData, setExpenseData] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [openDeleteAlert, setOpenDeleteAlert] = useState({
     show: false,
     data: null,
   });
   const [openAddExpenseModal, setOpenAddExpenseModal] = useState(false);
+  const [openCategoryModal, setOpenCategoryModal] = useState(false);
 
-
-  // Get All Expense Details
-  const fetchExpenseDetails = async () => {
-    if (loading) return;
-
+  const loadExpenses = async () => {
     setLoading(true);
-
     try {
-      const response = await axiosInstance.get(
-        `${API_PATHS.EXPENSE.GET_ALL}`
-      );
-
+      const response = await axiosInstance.get(`${API_PATHS.MODULES.FINANCE.EXPENSE.GET_ALL}`);
       if (response.data) {
         setExpenseData(response.data);
       }
@@ -42,15 +38,26 @@ const Expense = () => {
       setLoading(false);
     }
   };
-    
 
-  // Handle Add Expense
+  const fetchExpenseDetails = async () => {
+    if (loading) return;
+    await loadExpenses();
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await axiosInstance.get(API_PATHS.MODULES.FINANCE.EXPENSE_CATEGORIES.LIST);
+      if (response.data) setCategories(response.data);
+    } catch (error) {
+      console.log("Failed to load expense categories.", error);
+    }
+  };
+
   const handleAddExpense = async (expense) => {
     const { category, amount, date, icon } = expense;
 
-    // Validation Checks
-    if (!category.trim()) {
-      toast.error("Category is required.");
+    if (!category) {
+      toast.error("Please select a category.");
       return;
     }
 
@@ -65,7 +72,7 @@ const Expense = () => {
     }
 
     try {
-      await axiosInstance.post(API_PATHS.EXPENSE.ADD, {
+      await axiosInstance.post(API_PATHS.MODULES.FINANCE.EXPENSE.ADD, {
         category,
         amount,
         date,
@@ -74,52 +81,43 @@ const Expense = () => {
 
       setOpenAddExpenseModal(false);
       toast.success("Expense added successfully");
-      fetchExpenseDetails();
+      loadExpenses();
     } catch (error) {
-      console.error(
-        "Error adding expense:",
-        error.response?.data?.message || error.message
-      );
+      const msg = error.response?.data?.message || error.message;
+      toast.error(msg);
+      console.error("Error adding expense:", msg);
     }
   };
 
-  // Delete Expense
   const deleteExpense = async (id) => {
     try {
-      await axiosInstance.delete(API_PATHS.EXPENSE.DELETE(id));
+      await axiosInstance.delete(API_PATHS.MODULES.FINANCE.EXPENSE.DELETE(id));
 
       setOpenDeleteAlert({ show: false, data: null });
       toast.success("Expense details deleted successfully");
-      fetchExpenseDetails();
+      loadExpenses();
     } catch (error) {
-      console.error(
-        "Error deleting expense:",
-        error.response?.data?.message || error.message
-      );
+      console.error("Error deleting expense:", error.response?.data?.message || error.message);
     }
   };
 
-  // handle download expense details
   const handleDownloadExpenseDetails = async () => {
     try {
-      const response = await axiosInstance.get(
-        API_PATHS.EXPENSE.DOWNLOAD_EXCEL,
-        { responseType: "blob" }
-      );
+      const response = await axiosInstance.get(API_PATHS.MODULES.FINANCE.EXPENSE.DOWNLOAD_EXCEL, {
+        responseType: "blob",
+      });
 
       const disposition = response.headers["content-disposition"];
       let fileName = "expense_details.xlsx";
 
       if (disposition && disposition.includes("filename=")) {
-        fileName = disposition
-          .split("filename=")[1]
-          .replace(/"/g, "");
+        fileName = disposition.split("filename=")[1].replace(/"/g, "");
       }
 
       const url = window.URL.createObjectURL(response.data);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", fileName); 
+      link.setAttribute("download", fileName);
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -130,53 +128,49 @@ const Expense = () => {
     }
   };
 
-
   useEffect(() => {
-      fetchExpenseDetails();
-  
-      return() =>{};
-    }, []);
+    fetchExpenseDetails();
+    fetchCategories();
+    return () => {};
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
+  }, []);
 
   return (
-   <Homelayout activeMenu="Expense">
-      <div className="my-5 mx-auto">
-        <div className="grid grid-cols-1 gap-6">
-          <div className=" ">
-            <ExpenseOverview
-              transactions={expenseData}
-              onAddExpense={() => setOpenAddExpenseModal(true)}
-            />
-          </div>
-          <List
-            transactions={expenseData}
-            onDelete={(id) => {
-              setOpenDeleteAlert({ show: true, data: id });
-            }}
-            onDownload={handleDownloadExpenseDetails}
-          />
-        </div>
-      {/* Add Expense Modal */}
-      <Modal
-        isOpen={openAddExpenseModal}
-        onClose={() => setOpenAddExpenseModal(false)}
-        title="Add Expense"
-      >
-        <AddExpenseform onaddexpense={handleAddExpense}/>
-      </Modal>
-
-      <Modal
-        isOpen={openDeleteAlert.show}
-        onClose={() => setOpenDeleteAlert({ show: false, data: null })}
-        title="Delete Expense"
-      >
-        <Deletealert
-          content="Are you sure you want to delete this expense detail?"
-          onDelete={() => deleteExpense(openDeleteAlert.data)}
+    <Homelayout activeMenu="Expense">
+      <Stack spacing={3}>
+        <ExpenseOverview
+          transactions={expenseData}
+          onAddExpense={() => setOpenAddExpenseModal(true)}
+          onManageCategories={() => setOpenCategoryModal(true)}
         />
-      </Modal>
-      </div>
+        <List
+          transactions={expenseData}
+          onDelete={(id) => {
+            setOpenDeleteAlert({ show: true, data: id });
+          }}
+          onDownload={handleDownloadExpenseDetails}
+        />
+
+        <Modal isOpen={openAddExpenseModal} onClose={() => setOpenAddExpenseModal(false)} title="Add expense">
+          <AddExpenseform categories={categories} onaddexpense={handleAddExpense} />
+        </Modal>
+
+        <Modal isOpen={openCategoryModal} onClose={() => setOpenCategoryModal(false)} title="Expense categories">
+          <ExpenseCategoryManager
+            categories={categories}
+            onUpdated={async () => {
+              await fetchCategories();
+              await loadExpenses();
+            }}
+          />
+        </Modal>
+
+        <Modal isOpen={openDeleteAlert.show} onClose={() => setOpenDeleteAlert({ show: false, data: null })} title="Delete expense">
+          <Deletealert content="Are you sure you want to delete this expense?" onDelete={() => deleteExpense(openDeleteAlert.data)} />
+        </Modal>
+      </Stack>
     </Homelayout>
   );
-}
+};
 
-export default Expense
+export default Expense;

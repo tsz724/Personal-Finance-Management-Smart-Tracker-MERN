@@ -13,7 +13,10 @@ import IncomeLast60Days from '../../components/Home/IncomeLast60Days';
 import IncomeList from '../../components/Home/IncomeList';
 import { IoMdCard } from 'react-icons/io';
 import { addThousandSeparators } from '../../utils/helper';
-import { LuHandCoins,LuWalletMinimal } from 'react-icons/lu';
+import { LuHandCoins, LuWalletMinimal } from 'react-icons/lu';
+import Grid from '@mui/material/Grid';
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
 
 function Home() {
   useUserAuth();
@@ -26,15 +29,12 @@ function Home() {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        const response = await axiosInstance.get(
-          API_PATHS.DASHBOARD.GET_DATA
-        );
-
+        const response = await axiosInstance.get(API_PATHS.MODULES.FINANCE.DASHBOARD);
         if (response?.data) {
           setDashboardData(response.data);
         }
       } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
+        console.error('Failed to fetch dashboard data:', error);
       } finally {
         setLoading(false);
       }
@@ -43,62 +43,81 @@ function Home() {
     fetchDashboardData();
   }, []);
 
+  if (loading && !dashboardData) {
+    return (
+      <Homelayout activeMenu="Home">
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+          <CircularProgress />
+        </Box>
+      </Homelayout>
+    );
+  }
+
   return (
     <Homelayout activeMenu="Home">
-      <div className="my-5 mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12, md: 6, lg: 4 }}>
           <InfoCard
             icon={<IoMdCard />}
-            label="Total Balance "
+            label="Total balance"
             value={addThousandSeparators(dashboardData?.totalBalance || 0)}
-             color="bg-blue-600"
+           color="#2563eb"
           />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6, lg: 4 }}>
           <InfoCard
             icon={<LuWalletMinimal />}
-            label="Total Income "
+            label="Total income"
             value={addThousandSeparators(dashboardData?.totalincome || 0)}
-             color="bg-green-500"
+            color="#059669"
           />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6, lg: 4 }}>
           <InfoCard
             icon={<LuHandCoins />}
-            label="Total Expense "
+            label="Total expense"
             value={addThousandSeparators(dashboardData?.totalexpenses || 0)}
-             color="bg-red-500"
+            color="#dc2626"
           />
-         </div>
-         
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
           <RecentTransactions
             transactions={dashboardData?.recentTransactions || []}
-          onSeeMore={() => navigate('/expense')}
+            onSeeMore={() => navigate('/expense')}
           />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
           <FinanceOverview
-          totalBalance={dashboardData?.totalBalance || 0}
-          totalIncome={dashboardData?.totalincome || 0}
-          totalExpense={dashboardData?.totalexpenses || 0}
+            totalBalance={dashboardData?.totalBalance || 0}
+            totalIncome={dashboardData?.totalincome || 0}
+            totalExpense={dashboardData?.totalexpenses || 0}
           />
-        </div>
+        </Grid>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <Grid size={{ xs: 12, md: 6 }}>
           <IncomeList
             income={dashboardData?.totalIncomeLast60Days?.transactions || []}
             onSeeMore={() => navigate('/income')}
           />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
           <IncomeLast60Days
             income={dashboardData?.totalIncomeLast60Days?.transactions || []}
-            totalincome={dashboardData?.totalIncomeLast60Days?.total || 0} />
-        </div>
+            totalincome={dashboardData?.totalIncomeLast60Days?.total || 0}
+          />
+        </Grid>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+        <Grid size={{ xs: 12, md: 6 }}>
           <ExpensesList
             expenses={dashboardData?.totalExpensesLast60Days?.transactions || []}
             onSeeMore={() => navigate('/expense')}
           />
-          <ExpensesLast60days
-            data={dashboardData?.totalExpensesLast60Days?.transactions || []}
-          />
-        </div>
-      </div>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <ExpensesLast60days data={dashboardData?.totalExpensesLast60Days?.transactions || []} />
+        </Grid>
+      </Grid>
     </Homelayout>
   );
 }

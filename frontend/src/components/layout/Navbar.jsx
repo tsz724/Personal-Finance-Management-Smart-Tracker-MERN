@@ -1,69 +1,69 @@
-import React, { useState} from 'react';
-import { HiOutlineMenu, HiOutlineX } from 'react-icons/hi';
-import { LuTrendingUpDown } from "react-icons/lu";
-import Sidebar from './Sidebar';
+import React from "react";
+import AppBar from "@mui/material/AppBar";
+import Toolbar from "@mui/material/Toolbar";
+import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import Box from "@mui/material/Box";
+import Avatar from "@mui/material/Avatar";
+import MenuIcon from "@mui/icons-material/Menu";
+import ShowChartIcon from "@mui/icons-material/ShowChart";
 
-
-const Navbar = ({ activeMenu }) => {
-  const [openSideMenu, setOpenSideMenu] = useState(false);
-
-  // Close menu when clicking outside
-  // useEffect(() => {
-  //   const handleClickOutside = (event) => {
-  //     if (openSideMenu && !event.target.closest('.mobile-menu-container')) {
-  //       setOpenSideMenu(false);
-  //     }
-  //   };
-
-  //   if (openSideMenu) {
-  //     document.addEventListener('click', handleClickOutside);
-  //     // Prevent body scroll when menu is open
-  //     document.body.style.overflow = 'hidden';
-  //   }
-
-  //   return () => {
-  //     document.removeEventListener('click', handleClickOutside);
-  //     document.body.style.overflow = 'unset';
-  //   };
-  // }, [openSideMenu]);
-
+const Navbar = ({ onMenuOpen }) => {
   return (
-    <div className="sticky top-0 z-30 bg-white border-b backdrop-blur-[2px] border-gray-200/50">
-      <div className="flex items-center gap-5 py-2 px-4 max-w-7xl mx-auto">
-        
-        <button
-          className="block lg:hidden text-black"
-          onClick={() => setOpenSideMenu(!openSideMenu)}
+    <AppBar
+      position="sticky"
+      color="inherit"
+      elevation={0}
+      sx={{
+        borderBottom: 1,
+        borderColor: "divider",
+        bgcolor: "background.paper",
+      }}
+    >
+      <Toolbar sx={{ maxWidth: 1440, width: "100%", mx: "auto", px: { xs: 1, sm: 2 } }}>
+        <IconButton
+          color="inherit"
+          edge="start"
+          onClick={onMenuOpen}
+          sx={{ mr: 1, display: { md: "none" } }}
+          aria-label="open menu"
         >
-          {openSideMenu ? (
-            <HiOutlineX className="text-2xl" />
-          ) : (
-            <HiOutlineMenu className="text-2xl" />
-          )}
-        </button>
+          <MenuIcon />
+        </IconButton>
 
-        <div className="w-8 h-8 bg-linear-to-br from-orange-700 to-rose-700 rounded-full flex items-center justify-center text-white">
-          <LuTrendingUpDown className="text-xl" />
-        </div>
+        <Avatar
+          sx={{
+            width: 40,
+            height: 40,
+            mr: 1.5,
+            background: (t) =>
+              `linear-gradient(135deg, ${t.palette.primary.main} 0%, ${t.palette.secondary.main} 100%)`,
+          }}
+        >
+          <ShowChartIcon fontSize="small" />
+        </Avatar>
 
-        <div className="leading-tight">
-          <div className="text-xl font-bold text-gray-900">Expensa</div>
-          <div className="text-xs text-gray-500">Smart Expense Tracker</div>
-        </div>
+        <Box sx={{ lineHeight: 1.2 }}>
+          <Typography variant="h6" component="div" fontWeight={800}>
+            Expensa
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            Smart expense tracker
+          </Typography>
+        </Box>
 
-        {/* Push to right */}
-        <div className="ml-auto text-sm text-gray-500 hidden sm:block">
+        <Box sx={{ flexGrow: 1 }} />
+
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ display: { xs: "none", sm: "block" } }}
+        >
           Secure · Fast · Insightful
-        </div>
-      </div>
-
-      {openSideMenu && (
-        <div className="fixed top-16 left-0 bg-white">
-          <Sidebar activeMenu={activeMenu} />
-        </div>
-      )}
-    </div>
+        </Typography>
+      </Toolbar>
+    </AppBar>
   );
-}
+};
 
 export default Navbar;

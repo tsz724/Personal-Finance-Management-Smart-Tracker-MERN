@@ -14,11 +14,12 @@ import Expense from "./pages/user/Expense";
 import Income from './pages/user/Income';
 import UserProvider from './context/UserContext';
 import {Toaster} from "react-hot-toast";
+import Box from '@mui/material/Box';
 
 const App = () => {
   return (
     <UserProvider>
-      <div>
+      <Box sx={{ minHeight: '100%' }}>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Root />} />
@@ -29,12 +30,11 @@ const App = () => {
             <Route path="/income" element={<Income />} />
           </Routes>
         </BrowserRouter>
-      </div>
+      </Box>
       <Toaster
         toastOptions={{
-          className:"",
           style:{
-            fontSize:'13px'
+            fontSize:'13px',
           },
         }}
         />
@@ -44,9 +44,6 @@ const App = () => {
 
 export default App
 const Root = () => {
-  //check if token exists in local storage
   const token = !!localStorage.getItem("token");
-
-  //redirect to dashboard if token exists else redirect to login
   return token ? <Navigate to="/dashboard" /> : <Navigate to="/login" />;
 }

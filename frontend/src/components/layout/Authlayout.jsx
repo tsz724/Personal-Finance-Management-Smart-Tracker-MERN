@@ -1,73 +1,157 @@
-import React from 'react'
-import { LuTrendingUpDown } from "react-icons/lu";
+import React from "react";
+import Box from "@mui/material/Box";
+import Paper from "@mui/material/Paper";
+import Typography from "@mui/material/Typography";
+import Grid from "@mui/material/Grid";
+import Stack from "@mui/material/Stack";
+import Avatar from "@mui/material/Avatar";
+import ShowChartIcon from "@mui/icons-material/ShowChart";
+import { alpha } from "@mui/material/styles";
 
-
-const Authlayout = ({children}) => {
+const Authlayout = ({ children }) => {
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center pt-24 pb-12 relative">
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "background.default",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <Box
+        component="header"
+        sx={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          zIndex: (t) => t.zIndex.drawer + 2,
+          borderBottom: 1,
+          borderColor: "divider",
+          bgcolor: (t) => alpha(t.palette.background.paper, 0.92),
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <Box
+          sx={{
+            maxWidth: 1200,
+            mx: "auto",
+            px: 2,
+            py: 1.5,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Avatar
+              sx={{
+                width: 44,
+                height: 44,
+                background: (t) =>
+                  `linear-gradient(135deg, ${t.palette.primary.main} 0%, ${t.palette.secondary.main} 100%)`,
+              }}
+            >
+              <ShowChartIcon />
+            </Avatar>
+            <Box>
+              <Typography variant="h6" fontWeight={800}>
+                Expensa
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Smart expense tracker
+              </Typography>
+            </Box>
+          </Stack>
+          <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
+            Secure · Fast · Insightful
+          </Typography>
+        </Box>
+      </Box>
 
-      <div className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm z-40">
-        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-linear-to-br from-orange-700 to-rose-700 rounded-full flex items-center justify-center text-white">
-                <LuTrendingUpDown className="text-xl" />
-            </div>
-            <div className="leading-tight">
-              <div className="text-xl font-bold text-gray-900">Expensa</div>
-              <div className="text-xs text-gray-500">Smart Expense Tracker</div>
-            </div>
-          </div>
-          <div className="text-sm text-gray-500 hidden sm:block">Secure · Fast · Insightful</div>
-        </div>
-      </div>
+      <Box sx={{ flex: 1, pt: 10, pb: 4, px: 2, display: "flex", alignItems: "center" }}>
+        <Paper
+          elevation={0}
+          sx={{
+            maxWidth: 1100,
+            width: 1,
+            mx: "auto",
+            overflow: "hidden",
+            border: 1,
+            borderColor: "divider",
+          }}
+        >
+          <Grid container>
+            <Grid size={{ xs: 12, md: 6 }} sx={{ p: { xs: 3, md: 6 } }}>
+              <Box sx={{ minHeight: { xs: "auto", md: 420 }, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                {children}
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 4 }}>
+                  © {new Date().getFullYear()} Expensa
+                </Typography>
+              </Box>
+            </Grid>
+              <Grid
+                size={{ xs: 12, md: 6 }}
+                sx={{
+                  display: { xs: "none", md: "flex" },
+                  alignItems: "stretch",
+                  background: (t) =>
+                    `linear-gradient(160deg, ${t.palette.primary.dark} 0%, ${t.palette.secondary.dark} 100%)`,
+                  color: "common.white",
+                  p: 4,
+                }}
+              >
+                <Stack spacing={3} justifyContent="center" sx={{ width: 1 }}>
+                  <Paper
+                    sx={{
+                      p: 3,
+                      bgcolor: (t) => alpha(t.palette.common.white, 0.12),
+                      color: "inherit",
+                      border: "none",
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                      Track your income &amp; expenses
+                    </Typography>
+                    <Typography variant="h4" fontWeight={700} sx={{ mt: 1 }}>
+                      $430,000
+                    </Typography>
+                    <Typography variant="caption" sx={{ opacity: 0.85 }}>
+                      Example aggregate balance
+                    </Typography>
+                  </Paper>
+                  <Paper
+                    sx={{
+                      p: 2.5,
+                      bgcolor: (t) => alpha(t.palette.common.white, 0.1),
+                      color: "inherit",
+                      border: "none",
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ mb: 2, opacity: 0.9 }}>
+                      Spending rhythm
+                    </Typography>
+                    <Stack direction="row" spacing={1} alignItems="flex-end" sx={{ height: 120 }}>
+                      {[0.35, 0.55, 0.75, 0.45, 0.6].map((h, i) => (
+                        <Box
+                          key={i}
+                          sx={{
+                            flex: 1,
+                            height: `${h * 100}%`,
+                            borderRadius: 1,
+                            bgcolor: (t) => alpha(t.palette.common.white, 0.75 - i * 0.08),
+                          }}
+                        />
+                      ))}
+                    </Stack>
+                  </Paper>
+                </Stack>
+              </Grid>
+          </Grid>
+        </Paper>
+      </Box>
+    </Box>
+  );
+};
 
-      <div className="w-full max-w-6xl bg-white rounded-2xl shadow-lg overflow-hidden grid grid-cols-1 md:grid-cols-2">
-        <div className="p-6 md:p-16 flex flex-col justify-center">
-          <div className="mb-4">
-            {/* Intentionally left small to avoid duplicating header */}
-          </div>
-
-          <div className="mt-2 transition-all duration-300 w-full min-h-120 md:min-h-130 flex items-center overflow-y-auto">
-            <div className="w-full">
-              {children}
-            </div>
-          </div>
-
-          <div className="mt-6 text-xs text-gray-400">© {new Date().getFullYear()} Expensa</div>
-        </div>
-
-        <div className="hidden md:flex items-center justify-center bg-linear-to-br from-orange-700 to-rose-700 p-8 text-white">
-          <div className="w-full max-w-md text-white">
-            <div className="bg-white/10 rounded-xl p-6 mb-6">
-              <div className="text-sm">Track Your Income & Expenses</div>
-              <div className="text-2xl font-semibold mt-2">$430,000</div>
-            </div>
-
-            <div className="bg-white/10 rounded-xl p-4">
-              <div className="text-sm mb-3">All Transactions</div>
-              <div className="h-36 rounded-lg flex items-end gap-3 p-2">
-                <div className="flex-1 h-full flex items-end">
-                  <div className="bg-white/80 w-full rounded-t h-12" />
-                </div>
-                <div className="flex-1 h-full flex items-end">
-                  <div className="bg-white/70 w-full rounded-t h-20" />
-                </div>
-                <div className="flex-1 h-full flex items-end">
-                  <div className="bg-white/60 w-full rounded-t h-28" />
-                </div>
-                <div className="flex-1 h-full flex items-end">
-                  <div className="bg-white/50 w-full rounded-t h-16" />
-                </div>
-                <div className="flex-1 h-full flex items-end">
-                  <div className="bg-white/70 w-full rounded-t h-24" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export default Authlayout
+export default Authlayout;

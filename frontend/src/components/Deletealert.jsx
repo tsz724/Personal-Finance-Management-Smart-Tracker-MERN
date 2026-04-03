@@ -1,21 +1,21 @@
-import React from 'react'
+import React from "react";
+import Typography from "@mui/material/Typography";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
 
 const Deletealert = ({ content, onDelete }) => {
   return (
-    <div>
-      <p className="text-sm px-4" >{content}</p>
-
-      <div className="flex justify-end mt-6 px-6 pb-6">
-        <button
-          type="button"
-          className="add-btn add-btn-fill "
-          onClick={onDelete}
-        >
+    <Box sx={{ px: 1 }}>
+      <Typography variant="body2" color="text.secondary">
+        {content}
+      </Typography>
+      <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 3, gap: 1 }}>
+        <Button variant="contained" color="error" onClick={onDelete}>
           Delete
-        </button>
-      </div>
-    </div>
-  )
-}
+        </Button>
+      </Box>
+    </Box>
+  );
+};
 
 export default Deletealert;

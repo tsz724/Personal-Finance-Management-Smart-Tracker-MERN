@@ -1,47 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import Custombarchart from '../Charts/Custombarchart';
+import React, { useMemo } from "react";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Typography from "@mui/material/Typography";
+import Box from "@mui/material/Box";
+import Custombarchart from "../Charts/Custombarchart";
 
 const ExpensesLast60days = ({ data }) => {
-  const [chartData, setChartData] = useState([]);
-
-  const prepareExpenseBarChartData = (rawItems = []) => {
-    if (!rawItems || rawItems.length === 0) return;
-
-    const groups = rawItems.reduce((acc, item) => {
-      const dateKey = item?.date ? new Date(item.date).toISOString().split('T')[0] : 'Unknown';
-      
+  const chartData = useMemo(() => {
+    if (!data || data.length === 0) return [];
+    const groups = data.reduce((acc, item) => {
+      const dateKey = item?.date ? new Date(item.date).toISOString().split("T")[0] : "Unknown";
       if (!acc[dateKey]) acc[dateKey] = 0;
       acc[dateKey] += item?.amount || 0;
       return acc;
     }, {});
-
-    const formattedData = Object.keys(groups)
-      .map((date) => ({
-        date,
-        amount: groups[date],
-      }))
+    return Object.keys(groups)
+      .map((date) => ({ date, amount: groups[date] }))
       .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    setChartData(formattedData);
-  };
-
-  useEffect(() => {
-    prepareExpenseBarChartData(data);
   }, [data]);
 
   return (
-    <div className="card col-span-1 p-6 min-h-100">
-      <div className="flex items-center justify-between">
-        <h5 className="text-lg font-semibold text-gray-800">Last 60 days Expense</h5>
-      </div>
-      {chartData.length > 0 ? (
-        <Custombarchart data={chartData}/>
-      ) : (
-        <div className="flex h-75 items-center justify-center text-gray-400">
-          No expense data found for this period.
-        </div>
-      )}
-    </div>
+    <Card sx={{ minHeight: 360 }}>
+      <CardContent sx={{ p: 3 }}>
+        <Typography variant="h6" fontWeight={700} gutterBottom>
+          Last 60 days · expenses
+        </Typography>
+        {chartData.length > 0 ? (
+          <Custombarchart data={chartData} />
+        ) : (
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 200 }}>
+            <Typography color="text.secondary">No expense data for this period.</Typography>
+          </Box>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

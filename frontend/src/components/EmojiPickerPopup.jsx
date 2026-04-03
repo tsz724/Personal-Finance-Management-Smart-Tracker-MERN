@@ -1,35 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import EmojiPicker from "emoji-picker-react";
-import { LuImage, LuX } from "react-icons/lu";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import IconButton from "@mui/material/IconButton";
+import Paper from "@mui/material/Paper";
+import ImageIcon from "@mui/icons-material/Image";
+import CloseIcon from "@mui/icons-material/Close";
 
 const EmojiPickerPopup = ({ icon, onSelect }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="flex flex-col md:flex-row items-start gap-5 mb-4">
-      <div 
-        className="flex items-center gap-4 cursor-pointer"
+    <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 2, mb: 2 }}>
+      <Box
+        sx={{ display: "flex", alignItems: "center", gap: 2, cursor: "pointer" }}
         onClick={() => setIsOpen(true)}
       >
-        <div className="w-12 h-12 flex items-center justify-center text-2xl rounded-lg">
+        <Paper
+          elevation={0}
+          sx={{
+            width: 52,
+            height: 52,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: 1,
+            borderColor: "divider",
+          }}
+        >
           {icon ? (
-            <img src={icon} alt="Icon" className="w-12 h-12" />
+            <Box component="img" src={icon} alt="" sx={{ width: 40, height: 40 }} />
           ) : (
-            <LuImage />
+            <ImageIcon color="action" />
           )}
-        </div>
-        <p className="">{icon ? "Change Icon" : "Pick Icon"}</p>
-      </div>
+        </Paper>
+        <Typography variant="body2" color="text.secondary">
+          {icon ? "Change icon" : "Pick icon"}
+        </Typography>
+      </Box>
 
       {isOpen && (
-        <div className="relative">
-          <button 
-            className="w-7 h-7 flex items-center justify-center bg-white border-gray-200 rounded-full "
-            onClick={() => setIsOpen(false)}
-          >
-            <LuX />
-          </button>
-          
+        <Box sx={{ position: "relative" }}>
+          <IconButton size="small" onClick={() => setIsOpen(false)} sx={{ position: "absolute", right: -8, top: -8, zIndex: 1 }}>
+            <CloseIcon fontSize="small" />
+          </IconButton>
           <EmojiPicker
             open={isOpen}
             onEmojiClick={(emoji) => {
@@ -37,10 +51,10 @@ const EmojiPickerPopup = ({ icon, onSelect }) => {
               setIsOpen(false);
             }}
           />
-        </div>
+        </Box>
       )}
-    </div>
+    </Box>
   );
 };
 
-export default EmojiPickerPopup
+export default EmojiPickerPopup;

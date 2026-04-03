@@ -1,59 +1,79 @@
-import React, { useState } from 'react';
-import Input from '../Input/Input';
-import EmojiPickerPopup from '../EmojiPickerPopup';
+import React, { useState } from "react";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
+import Box from "@mui/material/Box";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
+import Select from "@mui/material/Select";
+import MenuItem from "@mui/material/MenuItem";
+import FormHelperText from "@mui/material/FormHelperText";
+import EmojiPickerPopup from "../EmojiPickerPopup";
 
-const AddExpenseform = ({ onaddexpense }) => {
+const AddExpenseform = ({ categories = [], onaddexpense }) => {
   const [expense, setExpense] = useState({
     category: "",
     amount: "",
     date: "",
-    icon: ""
+    icon: "",
   });
 
   const handleChange = (key, value) => setExpense({ ...expense, [key]: value });
 
+  const hasCategories = categories.length > 0;
+  const canSubmit = hasCategories && expense.category;
+
   return (
-    <div className='px-4 py-2'>
+    <Box sx={{ px: 1, py: 1 }}>
+      <EmojiPickerPopup icon={expense.icon} onSelect={(selectedIcon) => handleChange("icon", selectedIcon)} />
 
-      <EmojiPickerPopup
-        icon={expense.icon}
-        onSelect={(selectedIcon) => handleChange("icon", selectedIcon)}
-      />
-
-      <Input
-        value={expense.category}
-        onChange={({ target }) => handleChange("category", target.value)}
-        label="Expense Category"
-        placeholder="Shopping, Rent, etc"
-        type="text"
-      />
-
-      <Input
-        value={expense.amount}
-        onChange={({ target }) => handleChange("amount", target.value)}
-        label="Amount"
-        placeholder=""
-        type="number"
-      />
-
-      <Input
-        value={expense.date}
-        onChange={({ target }) => handleChange("date", target.value)}
-        label="Date"
-        placeholder=""
-        type="date"
-      />
-
-      <div className="flex justify-end mt-6">
-        <button
-          type="button"
-          className="add-btn add-btn-fill"
-          onClick={() => onaddexpense(expense)}
+      <FormControl margin="normal" fullWidth disabled={!hasCategories}>
+        <InputLabel id="expense-category-label">Category</InputLabel>
+        <Select
+          labelId="expense-category-label"
+          label="Category"
+          value={expense.category}
+          onChange={(e) => handleChange("category", e.target.value)}
         >
-          Add Expense
-        </button>
-      </div>
-    </div>
+          <MenuItem value="">
+            <em>{hasCategories ? "Select a category" : "Create a category first"}</em>
+          </MenuItem>
+          {categories.map((c) => (
+            <MenuItem key={c._id} value={c._id}>
+              {c.name}
+            </MenuItem>
+          ))}
+        </Select>
+        {!hasCategories && (
+          <FormHelperText>Use &quot;Categories&quot; to add at least one category before recording expenses.</FormHelperText>
+        )}
+      </FormControl>
+
+      <TextField
+        label="Amount"
+        type="number"
+        value={expense.amount}
+        onChange={(e) => handleChange("amount", e.target.value)}
+        margin="normal"
+        fullWidth
+        inputProps={{ min: 0, step: "any" }}
+      />
+      <TextField
+        label="Date"
+        type="date"
+        value={expense.date}
+        onChange={(e) => handleChange("date", e.target.value)}
+        margin="normal"
+        fullWidth
+        slotProps={{ inputLabel: { shrink: true } }}
+      />
+
+      <Stack direction="row" justifyContent="flex-end" sx={{ mt: 3 }}>
+        <Button variant="contained" disabled={!canSubmit} onClick={() => onaddexpense(expense)}>
+          Add expense
+        </Button>
+      </Stack>
+    </Box>
   );
 };
 

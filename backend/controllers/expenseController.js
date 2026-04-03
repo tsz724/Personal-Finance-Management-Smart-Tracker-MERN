@@ -1,11 +1,15 @@
 const XLSX = require('xlsx');
-const Expense= require('../models/Expense');
+const { isValidObjectId } = require('mongoose');
+const Expense = require('../models/Expense');
+const ExpenseCategory = require('../models/ExpenseCategory');
 
 //Get expenses of the logged in user
 exports.getexpenses = async (req, res) => {
     const userId = req.user.id;
     try {
-        const expenses = await Expense.find({ user: userId }).sort({ date: -1 });
+        const expenses = await Expense.find({ user: userId })
+            .populate('expenseCategory', 'name icon')
+            .sort({ date: -1 });
         res.status(200).json(expenses);
     } catch (error) {
         console.error('Error fetching expenses:', error);
@@ -18,17 +22,24 @@ exports.addexpense = async (req, res) => {
     try {
         const { icon, amount, category, date } = req.body;
 
-        //validation
-        if (!date || !amount || !category) {
+        if (!date || !amount || category == null || category === '') {
             return res.status(400).json({ message: 'Please provide all required fields.' });
         }
+        if (!isValidObjectId(category)) {
+            return res.status(400).json({ message: 'Invalid category.' });
+        }
+        const catDoc = await ExpenseCategory.findOne({ _id: category, user: userId });
+        if (!catDoc) {
+            return res.status(400).json({ message: 'Category not found.' });
+        }
+
         const expense = new Expense({
             user: userId,
             icon,
             amount,
-            category,
+            expenseCategory: category,
             date
-        });
+      });
         
         await expense.save();
         res.status(201).json({ message: 'Expense added successfully', expense });
@@ -53,12 +64,14 @@ exports.downloadexcel = async (req, res) => {
   const userId = req.user.id;
 
   try {
-    const expenses = await Expense.find({ user: userId }).sort({ date: -1 });
+    const expenses = await Expense.find({ user: userId })
+        .populate('expenseCategory', 'name')
+        .sort({ date: -1 });
 
-    const excelData = expenses.map(expense => ({
-      Date: expense.date.toISOString().split("T")[0],
-      Category: expense.category,
-      Amount: expense.amount, 
+    const excelData = expenses.map((row) => ({
+      Date: row.date.toISOString().split("T")[0],
+      Category: row.expenseCategory?.name || row.category || '',
+      Amount: row.amount,
     }));
 
 

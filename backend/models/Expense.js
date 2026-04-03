@@ -13,10 +13,13 @@ const expenseSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    expenseCategory: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'ExpenseCategory',
+    },
     category: {
         type: String,
-        required: true
-    },// e.g., Food, Transport, Utilities, etc.
+    },
     date: {
         type: Date,
         default: Date.now

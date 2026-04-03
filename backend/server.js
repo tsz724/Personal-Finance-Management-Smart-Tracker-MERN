@@ -27,6 +27,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/income', incomeRoutes);
 app.use('/api/expense', expenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/modules', require('./routes/modulesRoutes'));
 
 
 const PORT = process.env.PORT || 5000;

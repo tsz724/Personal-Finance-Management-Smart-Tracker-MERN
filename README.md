@@ -139,34 +139,51 @@ The frontend communicates with the backend API. Key endpoints:
 
 # Authentication
 
-POST /api/v1/auth/register - User registration
+POST /api/auth/register - User registration
 
-POST /api/v1/auth/login - User login
+POST /api/auth/login - User login
 
-GET /api/v1/auth/getUser - Get current user
+GET /api/auth/profile - Get current user
 
-# Income
+# Legacy Finance (backward-compatible)
 
-GET /api/v1/income/get - Get all income
+GET /api/income/get - Get all income
 
-POST /api/v1/income/add - Add income
+POST /api/income/add - Add income
 
-DELETE /api/v1/income/:id - Delete income
+DELETE /api/income/:id - Delete income
 
-GET /api/v1/income/download-excel - Download income report
+GET /api/income/downloadexcel - Download income report
 
-# Expense
-GET /api/v1/expense/get - Get all expenses
+GET /api/expense/get - Get all expenses
 
-POST /api/v1/expense/add - Add expense
+POST /api/expense/add - Add expense
 
-DELETE /api/v1/expense/:id - Delete expense
+DELETE /api/expense/:id - Delete expense
 
-GET /api/v1/expense/download-excel - Download expense report
+GET /api/expense/downloadexcel - Download expense report
 
-# Dashboard
+GET /api/dashboard - Get dashboard data
 
-GET /api/v1/dashboard - Get dashboard data
+# New generic modules
+
+GET /api/modules/finance/dashboard - Finance dashboard data
+
+GET /api/modules/finance/income - Get all income
+
+POST /api/modules/finance/income - Add income
+
+DELETE /api/modules/finance/income/:id - Delete income
+
+GET /api/modules/finance/income/download - Download income report
+
+GET /api/modules/finance/expense - Get all expenses
+
+POST /api/modules/finance/expense - Add expense
+
+DELETE /api/modules/finance/expense/:id - Delete expense
+
+GET /api/modules/finance/expense/download - Download expense report
 
 #
 

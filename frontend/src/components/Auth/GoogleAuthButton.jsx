@@ -1,36 +1,37 @@
-import React from 'react'
+import React from "react";
+import Box from "@mui/material/Box";
 
 const loadGoogleScript = (onLoad) => {
-  if (document.getElementById('google-identity')) {
-    onLoad()
-    return
+  if (document.getElementById("google-identity")) {
+    onLoad();
+    return;
   }
 
-  const script = document.createElement('script')
-  script.id = 'google-identity'
-  script.src = 'https://accounts.google.com/gsi/client'
-  script.async = true
-  script.defer = true
-  script.onload = onLoad
-  document.body.appendChild(script)
-}
+  const script = document.createElement("script");
+  script.id = "google-identity";
+  script.src = "https://accounts.google.com/gsi/client";
+  script.async = true;
+  script.defer = true;
+  script.onload = onLoad;
+  document.body.appendChild(script);
+};
 
 const GoogleAuthButton = ({ onAuthSuccess, onAuthError }) => {
-  const buttonRef = React.useRef(null)
+  const buttonRef = React.useRef(null);
 
   React.useEffect(() => {
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
     if (!clientId) {
       if (onAuthError) {
-        onAuthError('Google Client ID is missing. Please configure it.')
+        onAuthError("Google Client ID is missing. Please configure it.");
       }
-      return
+      return;
     }
 
     const initialize = () => {
       if (!window.google || !window.google.accounts || !buttonRef.current) {
-        return
+        return;
       }
 
       window.google.accounts.id.initialize({
@@ -38,31 +39,31 @@ const GoogleAuthButton = ({ onAuthSuccess, onAuthError }) => {
         callback: (response) => {
           if (!response?.credential) {
             if (onAuthError) {
-              onAuthError('Google sign-in failed. Please try again.')
+              onAuthError("Google sign-in failed. Please try again.");
             }
-            return
+            return;
           }
-          onAuthSuccess(response.credential)
+          onAuthSuccess(response.credential);
         },
-      })
+      });
 
       window.google.accounts.id.renderButton(buttonRef.current, {
-        theme: 'outline',
-        size: 'large',
-        shape: 'pill',
+        theme: "outline",
+        size: "large",
+        shape: "pill",
         width: 320,
-        text: 'continue_with',
-      })
-    }
+        text: "continue_with",
+      });
+    };
 
-    loadGoogleScript(initialize)
-  }, [onAuthSuccess, onAuthError])
+    loadGoogleScript(initialize);
+  }, [onAuthSuccess, onAuthError]);
 
   return (
-    <div className="w-full flex justify-center">
+    <Box sx={{ width: 1, display: "flex", justifyContent: "center" }}>
       <div ref={buttonRef} />
-    </div>
-  )
-}
+    </Box>
+  );
+};
 
-export default GoogleAuthButton
+export default GoogleAuthButton;

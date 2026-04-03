@@ -1,15 +1,42 @@
-import React from 'react'
+import React from "react";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
 
-const InfoCard = ({icon,label,value,color}) => {
-  return <div className='flex gap-6 bg-white p-5 rounded-2xl shadow-md shadow-gray-100 border border-gray-200/50'>
-        <div className={`w-14 h-14 flex items-center justify-center text-[26px] text-white ${color} rounded-full drop-shadow-xl`}>
+const InfoCard = ({ icon, label, value, color }) => {
+  return (
+    <Card sx={{ height: 1 }}>
+      <CardContent sx={{ p: 3 }}>
+        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+          <Box
+            sx={{
+              width: 56,
+              height: 56,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "common.white",
+              fontSize: 26,
+              bgcolor: color,
+              boxShadow: (t) => t.shadows[3],
+            }}
+          >
             {icon}
-        </div>
-        <div>
-            <h6 className='text-sm text-gray-500 mb-1'>{label}</h6>
-            <span className='text-[22px]'>$ {value}</span>
-        </div>
-    </div>
+          </Box>
+          <Box>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              {label}
+            </Typography>
+            <Typography variant="h5" fontWeight={700}>
+              $ {value}
+            </Typography>
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  );
 };
 
-export default InfoCard
+export default InfoCard;
