@@ -40,8 +40,7 @@ export function getBigCalendarAreaSx({ theme, cal }) {
       borderTop: `1px solid ${cal.border}`,
     },
     '& .rbc-label': { color: cal.muted, fontSize: 13 },
-    /* Taller half-hour rows so short events stay readable (default RBC rows are very thin). */
-    /* Enough height for one-line time + ~2 lines of title in a 30min cell */
+    /* Half-hour rows; single-line “Title 8:00 AM – 8:30 AM” fits comfortably. */
     '& .rbc-day-slot .rbc-time-slot': {
       minHeight: 52,
     },
@@ -49,58 +48,63 @@ export function getBigCalendarAreaSx({ theme, cal }) {
       minHeight: 52,
     },
     /*
-      RBC defaults to flex-flow: column wrap, which reflows label + title into side‑by‑side
-      columns and splits "8 | :00 AM – 8:30 AM" (broken time + duplicate AM). Force a normal vertical stack.
+      Custom `components.event` renders “Title, 9a” inside .rbc-event-content only.
+      Hide RBC’s separate .rbc-event-label so time is not duplicated.
     */
     '& .rbc-day-slot .rbc-event, & .rbc-day-slot .rbc-background-event': {
-      flexFlow: 'column nowrap',
-      alignItems: 'stretch',
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+      alignItems: 'center',
       justifyContent: 'flex-start',
       minHeight: 24,
-      padding: '3px 6px',
-      fontSize: 13,
+      padding: '6px 10px',
       lineHeight: 1.25,
-      gap: 2,
+      gap: 0,
+      color: '#fff',
     },
     '& .rbc-day-slot .rbc-event-label': {
-      flex: '0 0 auto',
-      width: '100%',
-      maxWidth: '100%',
-      fontSize: '0.7rem',
-      fontWeight: 700,
-      lineHeight: 1.15,
-      letterSpacing: '0.01em',
+      display: 'none',
+    },
+    '& .rbc-day-slot .rbc-event-content': {
+      flex: '1 1 auto',
+      minWidth: 0,
+      fontSize: '0.875rem',
+      fontWeight: 800,
+      lineHeight: 1.25,
+      color: 'inherit',
       whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
     },
-    '& .rbc-day-slot .rbc-event-content': {
-      flex: '1 1 auto',
-      minHeight: 0,
-      width: '100%',
-      maxWidth: '100%',
-      fontSize: '0.75rem',
-      fontWeight: 600,
-      lineHeight: 1.2,
-      whiteSpace: 'normal',
-      overflow: 'hidden',
-      display: '-webkit-box',
-      WebkitBoxOrient: 'vertical',
-      WebkitLineClamp: 2,
-      wordBreak: 'break-word',
-    },
     '& .rbc-current-time-indicator': {
       backgroundColor: theme.palette.error.main,
     },
+    /* Month / agenda row chips — same visual weight as week view (no tiny grey text). */
     '& .rbc-row-segment .rbc-event': {
-      fontSize: 14,
-      padding: '4px 6px',
+      padding: '5px 8px',
       lineHeight: 1.25,
+      color: '#fff',
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+      alignItems: 'center',
+      gap: 0,
+    },
+    '& .rbc-row-segment .rbc-event-label': {
+      display: 'none',
     },
     '& .rbc-row-segment .rbc-event-content': {
+      flex: '1 1 auto',
+      minWidth: 0,
       fontSize: '0.875rem',
-      fontWeight: 600,
-      lineHeight: 1.3,
+      fontWeight: 800,
+      lineHeight: 1.25,
+      color: 'inherit',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+    },
+    '& .rbc-agenda-view .rbc-event-label': {
+      display: 'none',
     },
     '& .rbc-show-more': {
       color: cal.showMoreColor,

@@ -23,9 +23,9 @@ export function mapApiToRbcEvents(list, palette) {
         color: '#fff',
         borderRadius: 6,
         border: 'none',
-        fontSize: 13,
-        fontWeight: 600,
-        lineHeight: 1.25,
+        fontSize: 14,
+        fontWeight: 800,
+        lineHeight: 1.2,
       },
     };
   });

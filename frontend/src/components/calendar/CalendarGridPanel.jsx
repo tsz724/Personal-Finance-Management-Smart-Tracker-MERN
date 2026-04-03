@@ -12,6 +12,8 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import moment from 'moment';
 import { DnDCalendar, Views, calendarLocalizer } from './calendarDnD';
+import { CalendarEventChip } from './CalendarEventChip';
+import { CalendarGridViewContext } from './CalendarGridContext';
 import { getBigCalendarAreaSx } from './styles/bigCalendarAreaSx';
 
 export function CalendarGridPanel({
@@ -95,42 +97,45 @@ export function CalendarGridPanel({
         </Stack>
 
         <Box sx={areaSx}>
-          <DnDCalendar
-            localizer={calendarLocalizer}
-            events={calendarEvents}
-            startAccessor="start"
-            endAccessor="end"
-            style={{ height: '100%' }}
-            view={currentView}
-            views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
-            date={currentDate}
-            onNavigate={(d) => setCurrentDate(d)}
-            onView={(v) => setCurrentView(v)}
-            toolbar={false}
-            onSelectSlot={onSelectSlot}
-            onSelectEvent={onSelectEvent}
-            selectable
-            popup
-            draggableAccessor={() => true}
-            resizableAccessor={() => true}
-            resizable
-            onEventDrop={onEventDrop}
-            onEventResize={onEventResize}
-            step={30}
-            timeslots={2}
-            showMultiDayTimes
-            eventPropGetter={eventStyleGetter}
-            messages={{
-              agendaDateFormat: 'ddd MMM D',
-              agendaTimeFormat: 'h:mm a',
-              agendaTimeRangeFormat: ({ start, end }) =>
-                `${moment(start).format('h:mm a')} – ${moment(end).format('h:mm a')}`,
-              dayHeaderFormat: 'dddd, MMMM D',
-              dayRangeHeaderFormat: ({ start, end }) =>
-                `${moment(start).format('MMM D')} – ${moment(end).format('MMM D, YYYY')}`,
-              showMore: (total) => `+${total} more`,
-            }}
-          />
+          <CalendarGridViewContext.Provider value={currentView}>
+            <DnDCalendar
+              localizer={calendarLocalizer}
+              components={{ event: CalendarEventChip }}
+              events={calendarEvents}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: '100%' }}
+              view={currentView}
+              views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
+              date={currentDate}
+              onNavigate={(d) => setCurrentDate(d)}
+              onView={(v) => setCurrentView(v)}
+              toolbar={false}
+              onSelectSlot={onSelectSlot}
+              onSelectEvent={onSelectEvent}
+              selectable
+              popup
+              draggableAccessor={() => true}
+              resizableAccessor={() => true}
+              resizable
+              onEventDrop={onEventDrop}
+              onEventResize={onEventResize}
+              step={30}
+              timeslots={2}
+              showMultiDayTimes
+              eventPropGetter={eventStyleGetter}
+              messages={{
+                agendaDateFormat: 'ddd MMM D',
+                agendaTimeFormat: 'h:mm a',
+                agendaTimeRangeFormat: ({ start, end }) =>
+                  `${moment(start).format('h:mm a')} – ${moment(end).format('h:mm a')}`,
+                dayHeaderFormat: 'dddd, MMMM D',
+                dayRangeHeaderFormat: ({ start, end }) =>
+                  `${moment(start).format('MMM D')} – ${moment(end).format('MMM D, YYYY')}`,
+                showMore: (total) => `+${total} more`,
+              }}
+            />
+          </CalendarGridViewContext.Provider>
         </Box>
       </Paper>
     </Box>
