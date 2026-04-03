@@ -39,7 +39,9 @@ const Sidebar = ({ activeMenu, mobileOpen, onMobileClose, drawerWidth }) => {
       </Box>
       <Divider />
       <List sx={{ px: 1, py: 1 }}>
-        {SideMenuData.map((item) => {
+        {SideMenuData.filter((item) =>
+          item.adminOnly ? (user?.role || "employee") === "admin" : true
+        ).map((item) => {
           const selected = activeMenu === item.label;
           return (
             <ListItem key={item.id} disablePadding sx={{ mb: 0.5 }}>

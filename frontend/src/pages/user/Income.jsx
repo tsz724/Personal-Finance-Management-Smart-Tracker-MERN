@@ -136,7 +136,7 @@ const Income = () => {
   }, []);
 
   return (
-    <Homelayout activeMenu="Income">
+    <Homelayout activeMenu="Finance / Income">
       <Stack spacing={3}>
         <IncomeOverview
           transactions={incomeData}

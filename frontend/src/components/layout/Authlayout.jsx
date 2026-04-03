@@ -5,7 +5,7 @@ import Typography from "@mui/material/Typography";
 import Grid from "@mui/material/Grid";
 import Stack from "@mui/material/Stack";
 import Avatar from "@mui/material/Avatar";
-import ShowChartIcon from "@mui/icons-material/ShowChart";
+import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
 import { alpha } from "@mui/material/styles";
 
 const Authlayout = ({ children }) => {
@@ -52,19 +52,19 @@ const Authlayout = ({ children }) => {
                   `linear-gradient(135deg, ${t.palette.primary.main} 0%, ${t.palette.secondary.main} 100%)`,
               }}
             >
-              <ShowChartIcon />
+              <BusinessCenterIcon />
             </Avatar>
             <Box>
               <Typography variant="h6" fontWeight={800}>
-                Expensa
+                BusinessHub
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Smart expense tracker
+                Business management platform
               </Typography>
             </Box>
           </Stack>
           <Typography variant="body2" color="text.secondary" sx={{ display: { xs: "none", sm: "block" } }}>
-            Secure · Fast · Insightful
+            One place for finance, work, and teams
           </Typography>
         </Box>
       </Box>
@@ -86,7 +86,7 @@ const Authlayout = ({ children }) => {
               <Box sx={{ minHeight: { xs: "auto", md: 420 }, display: "flex", flexDirection: "column", justifyContent: "center" }}>
                 {children}
                 <Typography variant="caption" color="text.secondary" sx={{ mt: 4 }}>
-                  © {new Date().getFullYear()} Expensa
+                  © {new Date().getFullYear()} BusinessHub
                 </Typography>
               </Box>
             </Grid>
@@ -111,13 +111,13 @@ const Authlayout = ({ children }) => {
                     }}
                   >
                     <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                      Track your income &amp; expenses
+                      Run operations with clarity
                     </Typography>
                     <Typography variant="h4" fontWeight={700} sx={{ mt: 1 }}>
-                      $430,000
+                      Workspaces · Jobs · Delivery
                     </Typography>
                     <Typography variant="caption" sx={{ opacity: 0.85 }}>
-                      Example aggregate balance
+                      Finance, HR, calendar, and mail in one stack
                     </Typography>
                   </Paper>
                   <Paper

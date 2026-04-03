@@ -6,7 +6,7 @@ import IconButton from "@mui/material/IconButton";
 import Box from "@mui/material/Box";
 import Avatar from "@mui/material/Avatar";
 import MenuIcon from "@mui/icons-material/Menu";
-import ShowChartIcon from "@mui/icons-material/ShowChart";
+import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
 
 const Navbar = ({ onMenuOpen }) => {
   return (
@@ -40,15 +40,15 @@ const Navbar = ({ onMenuOpen }) => {
               `linear-gradient(135deg, ${t.palette.primary.main} 0%, ${t.palette.secondary.main} 100%)`,
           }}
         >
-          <ShowChartIcon fontSize="small" />
+          <BusinessCenterIcon fontSize="small" />
         </Avatar>
 
         <Box sx={{ lineHeight: 1.2 }}>
           <Typography variant="h6" component="div" fontWeight={800}>
-            Expensa
+            BusinessHub
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            Smart expense tracker
+            Business management platform
           </Typography>
         </Box>
 
@@ -59,7 +59,7 @@ const Navbar = ({ onMenuOpen }) => {
           color="text.secondary"
           sx={{ display: { xs: "none", sm: "block" } }}
         >
-          Secure · Fast · Insightful
+          Finance · Operations · People
         </Typography>
       </Toolbar>
     </AppBar>

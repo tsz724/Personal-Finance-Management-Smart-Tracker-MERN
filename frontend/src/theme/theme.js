@@ -4,12 +4,12 @@ export const appTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#ea580c',
-      dark: '#c2410c',
-      light: '#fb923c',
+      main: '#4f46e5',
+      dark: '#4338ca',
+      light: '#818cf8',
     },
     secondary: {
-      main: '#be123c',
+      main: '#0d9488',
     },
     success: {
       main: '#059669',

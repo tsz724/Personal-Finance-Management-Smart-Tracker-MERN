@@ -51,8 +51,11 @@ exports.addexpense = async (req, res) => {
 //Delete expense by id
 exports.deleteExpense = async (req, res) => {
     try {
-       await Expense.findByIdAndDelete(req.params.id);
-         res.status(200).json({ message: 'Expense deleted successfully' }); 
+        const deleted = await Expense.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+        if (!deleted) {
+            return res.status(404).json({ message: 'Expense not found' });
+        }
+        res.status(200).json({ message: 'Expense deleted successfully' });
     } catch (error) {
         console.error('Error deleting expense:', error);
         res.status(500).json({ message: 'Server error' });

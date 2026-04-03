@@ -136,7 +136,7 @@ const Expense = () => {
   }, []);
 
   return (
-    <Homelayout activeMenu="Expense">
+    <Homelayout activeMenu="Finance / Expense">
       <Stack spacing={3}>
         <ExpenseOverview
           transactions={expenseData}

@@ -28,6 +28,8 @@ app.use('/api/income', incomeRoutes);
 app.use('/api/expense', expenseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/modules', require('./routes/modulesRoutes'));
+app.use('/api/business', require('./routes/businessRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
 
 
 const PORT = process.env.PORT || 5000;

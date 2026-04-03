@@ -68,7 +68,7 @@ const Register = () => {
         Create an account
       </Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Join Expensa by entering your details below.
+        Join BusinessHub to manage finance, workspaces, and operations in one place.
       </Typography>
 
       {error && (

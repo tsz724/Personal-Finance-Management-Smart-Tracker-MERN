@@ -26,17 +26,24 @@ exports.registerUser = async (req, res) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        // Create new user
+        const role =
+            process.env.BOOTSTRAP_ADMIN_EMAIL &&
+            String(email).toLowerCase() === String(process.env.BOOTSTRAP_ADMIN_EMAIL).toLowerCase()
+                ? 'admin'
+                : 'employee';
+
         const user = await User.create({
             name,
             email,
-            password
+            password,
+            role,
         });
 
         if (user) {
+            const safe = await User.findById(user._id).select('-password');
             res.status(201).json({
                 id: user._id,
-                user,
+                user: safe,
                 token: generateToken(user._id),
             });
         } else {
@@ -58,6 +65,10 @@ exports.loginUser = async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
+        if (user.isActive === false) {
+            return res.status(403).json({ message: 'Account is deactivated' });
+        }
+
         if (user.authProvider === 'google' && !user.password) {
             return res.status(400).json({ message: 'Please sign in with Google' });
         }
@@ -68,9 +79,10 @@ exports.loginUser = async (req, res) => {
             return res.status(400).json({ message: 'Incorrect email or password' });
         }
 
+        const safe = await User.findById(user._id).select('-password');
         res.status(200).json({
             id: user._id,
-            user,
+            user: safe,
             token: generateToken(user._id),
         });
     } catch (err) {
@@ -103,11 +115,17 @@ exports.googleAuth = async (req, res) => {
         let user = await User.findOne({ email });
 
         if (!user) {
+            const role =
+                process.env.BOOTSTRAP_ADMIN_EMAIL &&
+                String(email).toLowerCase() === String(process.env.BOOTSTRAP_ADMIN_EMAIL).toLowerCase()
+                    ? 'admin'
+                    : 'employee';
             user = await User.create({
                 name: name || email.split('@')[0],
                 email,
                 googleId,
                 authProvider: 'google',
+                role,
             });
         } else {
             let needsSave = false;
@@ -124,9 +142,14 @@ exports.googleAuth = async (req, res) => {
             }
         }
 
+        if (user.isActive === false) {
+            return res.status(403).json({ message: 'Account is deactivated' });
+        }
+
+        const safeGoogle = await User.findById(user._id).select('-password');
         return res.status(200).json({
             id: user._id,
-            user,
+            user: safeGoogle,
             token: generateToken(user._id),
         });
     } catch (error) {

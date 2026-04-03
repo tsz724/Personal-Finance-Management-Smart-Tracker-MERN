@@ -116,7 +116,10 @@ exports.downloadexcel = async (req, res) => {
 //Delete income by id
 exports.deleteIncome = async (req, res) => {
     try{
-        await Income.findByIdAndDelete(req.params.id);
+        const deleted = await Income.findOneAndDelete({ _id: req.params.id, user: req.user.id });
+        if (!deleted) {
+            return res.status(404).json({ message: 'Income not found' });
+        }
         res.status(200).json({ message: 'Income deleted successfully' });
     }
     catch (error) {

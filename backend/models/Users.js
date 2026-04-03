@@ -27,6 +27,23 @@ const userSchema = new mongoose.Schema({
             return this.authProvider === 'local';
         },
     },
+    role: {
+        type: String,
+        enum: ['admin', 'manager', 'employee'],
+        default: 'employee',
+    },
+    jobTitle: {
+        type: String,
+        default: '',
+    },
+    department: {
+        type: String,
+        default: '',
+    },
+    isActive: {
+        type: Boolean,
+        default: true,
+    },
 }, {
     timestamps: true,
 });
