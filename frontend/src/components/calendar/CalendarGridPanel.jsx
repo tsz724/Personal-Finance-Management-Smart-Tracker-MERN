@@ -11,6 +11,8 @@ import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import moment from 'moment';
+import { useLayoutEffect, useMemo, useRef } from 'react';
+import { applyTimeGridScroll, getCalendarScrollToTime } from './calendarScroll';
 import { DnDCalendar, Views, calendarLocalizer } from './calendarDnD';
 import { CalendarEventChip } from './CalendarEventChip';
 import { CalendarGridViewContext } from './CalendarGridContext';
@@ -34,6 +36,20 @@ export function CalendarGridPanel({
   onEventResize,
 }) {
   const areaSx = getBigCalendarAreaSx({ theme, cal });
+  const calendarRootRef = useRef(null);
+
+  const scrollToTime = useMemo(
+    () => getCalendarScrollToTime(currentView, currentDate, calendarEvents),
+    [currentView, currentDate, calendarEvents]
+  );
+
+  useLayoutEffect(() => {
+    const run = () =>
+      applyTimeGridScroll(calendarRootRef.current, currentView, currentDate, calendarEvents);
+    run();
+    const id = requestAnimationFrame(run);
+    return () => cancelAnimationFrame(id);
+  }, [currentView, currentDate, calendarEvents]);
 
   return (
     <Box sx={{ flex: 1, py: { xs: 1, md: 1.5 }, px: 0 }}>
@@ -97,7 +113,7 @@ export function CalendarGridPanel({
           </FormControl>
         </Stack>
 
-        <Box sx={areaSx}>
+        <Box ref={calendarRootRef} sx={areaSx}>
           <CalendarGridViewContext.Provider value={currentView}>
             <DnDCalendar
               localizer={calendarLocalizer}
@@ -109,6 +125,8 @@ export function CalendarGridPanel({
               view={currentView}
               views={[Views.MONTH, Views.WEEK, Views.DAY, Views.AGENDA]}
               date={currentDate}
+              scrollToTime={scrollToTime}
+              enableAutoScroll
               onNavigate={(d) => setCurrentDate(d)}
               onView={(v) => setCurrentView(v)}
               toolbar={false}
