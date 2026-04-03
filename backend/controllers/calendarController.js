@@ -8,24 +8,37 @@ exports.listEvents = async (req, res) => {
         const startFilter = from ? new Date(from) : new Date();
         const endFilter = to ? new Date(to) : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
 
-        let filter = {
-            start: { $gte: startFilter, $lte: endFilter },
+        const inWindow = {
+            start: { $lte: endFilter },
+            end: { $gte: startFilter },
         };
 
+        let filter;
         if (scope === 'personal' || !workspaceId) {
             const wsIds = await workspaceIdsForUser(userId);
-            filter.$or = [
-                { organizer: userId, visibility: 'personal' },
-                { organizer: userId, visibility: 'workspace' },
-                { attendees: userId },
-                { workspace: { $in: wsIds }, visibility: 'workspace' },
-            ];
+            filter = {
+                $and: [
+                    inWindow,
+                    {
+                        $or: [
+                            { organizer: userId, visibility: 'personal' },
+                            { organizer: userId, visibility: 'workspace' },
+                            { attendees: userId },
+                            { workspace: { $in: wsIds }, visibility: 'workspace' },
+                        ],
+                    },
+                ],
+            };
         } else {
             const ctx = await findWorkspaceForUser(workspaceId, userId);
             if (!ctx) return res.status(404).json({ message: 'Workspace not found' });
             filter = {
-                start: { $gte: startFilter, $lte: endFilter },
-                $or: [{ workspace: workspaceId, visibility: 'workspace' }, { organizer: userId }],
+                $and: [
+                    inWindow,
+                    {
+                        $or: [{ workspace: workspaceId, visibility: 'workspace' }, { organizer: userId }],
+                    },
+                ],
             };
         }
 
