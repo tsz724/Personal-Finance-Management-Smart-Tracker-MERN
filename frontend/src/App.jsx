@@ -11,7 +11,7 @@ import Projects from './pages/user/Projects';
 import WorkBoard from './pages/user/WorkBoard';
 import EmailCenter from './pages/user/EmailCenter';
 import Employees from './pages/user/Employees';
-import CalendarPage from './pages/user/CalendarPage';
+import CalendarPage from './pages/calendar';
 import Admin from './pages/user/Admin';
 import UserProvider from './context/UserContext';
 import { Toaster } from 'react-hot-toast';

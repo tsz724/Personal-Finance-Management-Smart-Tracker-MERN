@@ -6,7 +6,7 @@ import Sidebar from "./Sidebar";
 
 const SIDEBAR_WIDTH = 260;
 
-const Homelayout = ({ activeMenu, children }) => {
+const Homelayout = ({ activeMenu, children, fullWidthContent = false }) => {
   const { user } = useContext(UserContext);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -32,12 +32,12 @@ const Homelayout = ({ activeMenu, children }) => {
             component="main"
             sx={{
               flexGrow: 1,
-              p: { xs: 2, sm: 3 },
               width: {
                 md: `calc(100% - ${SIDEBAR_WIDTH}px)`,
               },
-              maxWidth: { md: 1280 },
-              mx: "auto",
+              ...(fullWidthContent
+                ? { p: 0, maxWidth: 'none', mx: 0 }
+                : { p: { xs: 2, sm: 3 }, maxWidth: { md: 1280 }, mx: 'auto' }),
             }}
           >
             {children}
