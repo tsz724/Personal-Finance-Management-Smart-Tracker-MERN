@@ -139,8 +139,8 @@ export function CalendarGridPanel({
               resizable
               onEventDrop={onEventDrop}
               onEventResize={onEventResize}
-              step={30}
-              timeslots={2}
+              step={15}
+              timeslots={4}
               showMultiDayTimes
               eventPropGetter={eventStyleGetter}
               messages={{

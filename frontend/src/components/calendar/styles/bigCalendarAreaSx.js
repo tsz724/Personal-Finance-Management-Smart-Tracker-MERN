@@ -109,12 +109,12 @@ export function getBigCalendarAreaSx({ theme, cal }) {
       '& .rbc-month-view .rbc-day-bg': { backgroundColor: '#fff' },
     }),
     '& .rbc-label': { color: cal.muted, fontSize: 12 },
-    /* Half-hour rows; single-line “Title 8:00 AM – 8:30 AM” fits comfortably. */
+    /* 15-minute rows (4/hour); ~same pixel height per hour as former 2×30min × 52px. */
     '& .rbc-day-slot .rbc-time-slot': {
-      minHeight: 52,
+      minHeight: 26,
     },
     '& .rbc-time-slot': {
-      minHeight: 52,
+      minHeight: 26,
     },
     /*
       Custom `components.event` renders “Title, 9a” inside .rbc-event-content only.
