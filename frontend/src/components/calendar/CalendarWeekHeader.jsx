@@ -1,15 +1,18 @@
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
 import moment from 'moment';
 import { Views } from 'react-big-calendar';
 import { useCalendarGridView } from './CalendarGridContext';
+
+/** Google Calendar light header grays */
+const G_WEEKDAY = '#70757a';
+const G_DATE = '#3c4043';
+const G_TODAY_BLUE = '#1a73e8';
 
 /**
  * react-big-calendar `components.header`: month row = weekday abbr; week/day = Google-style DOW + date with today pill.
  */
 export function CalendarWeekHeader({ date, label }) {
-  const theme = useTheme();
   const view = useCalendarGridView();
 
   if (view === Views.MONTH) {
@@ -20,11 +23,14 @@ export function CalendarWeekHeader({ date, label }) {
         role="columnheader"
         aria-sort="none"
         sx={{
-          fontWeight: 600,
+          fontWeight: 500,
           fontSize: 11,
           textTransform: 'uppercase',
-          color: 'text.secondary',
-          letterSpacing: 0.5,
+          color: G_WEEKDAY,
+          letterSpacing: 0.8,
+          display: 'inline-block',
+          width: '100%',
+          textAlign: 'center',
         }}
       >
         {label}
@@ -36,44 +42,58 @@ export function CalendarWeekHeader({ date, label }) {
   const dow = moment(date).format('ddd').toUpperCase();
   const dom = moment(date).format('D');
 
+  /*
+    RBC wraps headers in <button> or <span>; only phrasing content is valid inside a button.
+    Use span + inline-flex only (no div descendants) so week/day headers render reliably.
+  */
   return (
     <Box
       component="span"
       role="columnheader"
       aria-sort="none"
       sx={{
-        display: 'flex',
+        display: 'inline-flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 0.25,
-        py: 0.5,
+        justifyContent: 'center',
+        gap: '6px',
+        py: '10px',
+        px: 0.5,
+        width: '100%',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        verticalAlign: 'top',
         userSelect: 'none',
       }}
     >
       <Typography
+        component="span"
         variant="caption"
         sx={{
           fontSize: 11,
-          fontWeight: 600,
-          color: 'text.secondary',
-          letterSpacing: 0.4,
+          fontWeight: 500,
+          color: G_WEEKDAY,
+          letterSpacing: 0.6,
           lineHeight: 1,
+          textAlign: 'center',
         }}
       >
         {dow}
       </Typography>
       <Box
+        component="span"
         sx={{
-          width: 32,
-          height: 32,
+          width: 40,
+          height: 40,
           borderRadius: '50%',
-          display: 'flex',
+          display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 14,
-          fontWeight: isToday ? 600 : 400,
-          bgcolor: isToday ? theme.palette.primary.main : 'transparent',
-          color: isToday ? theme.palette.primary.contrastText : 'text.primary',
+          fontSize: 13,
+          lineHeight: 1,
+          fontWeight: isToday ? 500 : 400,
+          bgcolor: isToday ? G_TODAY_BLUE : 'transparent',
+          color: isToday ? '#fff' : G_DATE,
         }}
       >
         {dom}

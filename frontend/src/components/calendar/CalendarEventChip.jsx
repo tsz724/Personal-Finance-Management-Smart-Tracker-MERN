@@ -61,8 +61,64 @@ export function formatEventCommaTime(event, ev, titleFromAccessor, { includeTime
   return `${displayTitle}, ${timePart}`;
 }
 
+const titleWrapSx = {
+  whiteSpace: 'normal',
+  overflowWrap: 'anywhere',
+  wordBreak: 'break-word',
+  lineHeight: 1.25,
+};
+
+const subtitleWrapSx = {
+  ...titleWrapSx,
+  fontSize: '0.92em',
+  opacity: 0.9,
+  fontWeight: 500,
+  lineHeight: 1.2,
+};
+
+/** Title + optional subtitle (time / all-day) for responsive wrapping. */
+export function getEventChipTitleParts(event, ev, titleFromAccessor) {
+  const title =
+    String(titleFromAccessor ?? ev?.title ?? event?.title ?? '').trim() || '(No title)';
+  const start = event?.start ?? ev?.start;
+  const end = event?.end ?? ev?.end;
+  if (!start) return { title, subtitle: null };
+
+  const allDay = ev?.allDay ?? event?.allDay;
+  if (allDay) {
+    const s = moment(start);
+    const e = moment(end);
+    const subtitle = s.isSame(e, 'day')
+      ? 'All day'
+      : `${s.format('MMM D')} – ${e.format('MMM D')}`;
+    return { title, subtitle };
+  }
+  return { title, subtitle: formatEventTimeRangeLine(event, ev) };
+}
+
+function EventChipBody({ title, subtitle }) {
+  if (!subtitle) {
+    return <span style={{ display: 'block', minWidth: 0, ...titleWrapSx }}>{title}</span>;
+  }
+  return (
+    <span
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 2,
+        minWidth: 0,
+        width: '100%',
+        alignItems: 'stretch',
+      }}
+    >
+      <span style={titleWrapSx}>{title}</span>
+      <span style={subtitleWrapSx}>{subtitle}</span>
+    </span>
+  );
+}
+
 /**
- * react-big-calendar `components.event`: “Title, 9a” for short blocks; title + time range on two lines when taller.
+ * react-big-calendar `components.event`: responsive wrapping title + time; long timed blocks keep range on second line.
  * Agenda keeps title only (time is in its own column).
  */
 export function CalendarEventChip(props) {
@@ -73,7 +129,11 @@ export function CalendarEventChip(props) {
 
   if (view === Views.AGENDA) {
     const t = String(title ?? ev?.title ?? '').trim() || '(No title)';
-    return <span>{t}</span>;
+    return (
+      <span style={{ display: 'block', minWidth: 0, ...titleWrapSx }}>
+        {t}
+      </span>
+    );
   }
 
   const start = event?.start;
@@ -84,44 +144,24 @@ export function CalendarEventChip(props) {
     !allDay && durationMs >= TWO_LINE_MIN_MS && !!start && !!end;
 
   if (useTwoLines) {
-    const titleOnly = String(title ?? ev?.title ?? '').trim() || '(No title)';
-    const range = formatEventTimeRangeLine(event, ev);
+    const { title: titleOnly, subtitle: range } = getEventChipTitleParts(event, ev, title);
     return (
       <span
         style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'stretch',
-          gap: 1,
+          gap: 2,
           minWidth: 0,
           width: '100%',
         }}
       >
-        <span
-          style={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {titleOnly}
-        </span>
-        <span
-          style={{
-            fontWeight: 500,
-            opacity: 0.9,
-            fontSize: '0.92em',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {range}
-        </span>
+        <span style={titleWrapSx}>{titleOnly}</span>
+        <span style={subtitleWrapSx}>{range}</span>
       </span>
     );
   }
 
-  const text = formatEventCommaTime(event, ev, title, { includeTime: true });
-  return <span>{text}</span>;
+  const parts = getEventChipTitleParts(event, ev, title);
+  return <EventChipBody {...parts} />;
 }

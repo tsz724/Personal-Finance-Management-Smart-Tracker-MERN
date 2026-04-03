@@ -12,19 +12,63 @@ export function getBigCalendarAreaSx({ theme, cal }) {
     },
     '& .rbc-toolbar': { display: 'none' },
     '& .rbc-header': {
-      padding: '6px 4px',
-      fontWeight: 600,
+      padding: 0,
+      fontWeight: 500,
       fontSize: 11,
       textTransform: 'none',
       color: cal.muted,
       borderBottom: `1px solid ${cal.border}`,
+      textAlign: 'center',
+      /* Match RBC: do not shrink columns (was flex-shrink 1 and collapsed week headers). */
+      flex: '1 0 0%',
+      minWidth: 0,
       ...(!cal.isDark && { backgroundColor: '#fff' }),
     },
     '& .rbc-header .rbc-button-link': {
-      display: 'block',
+      display: 'flex',
       width: '100%',
+      alignItems: 'center',
+      justifyContent: 'center',
       color: 'inherit',
       textDecoration: 'none',
+      padding: 0,
+      border: 'none',
+      background: 'none',
+      cursor: 'pointer',
+    },
+    /* RBC uses border-left between header cells; keep divider color on-theme (Google-style grid). */
+    '& .rbc-header + .rbc-header': {
+      borderLeft: `1px solid ${cal.border}`,
+    },
+    /*
+      RBC sets .rbc-header { min-height: 0; overflow: hidden } so flex items can shrink and clip
+      custom two-line headers (today pill cut in half). Keep week/day headers sized to content.
+    */
+    '& .rbc-time-header-content > .rbc-row.rbc-time-header-cell': {
+      flexShrink: 0,
+      minHeight: 'unset',
+      overflow: 'visible',
+      alignItems: 'stretch',
+    },
+    '& .rbc-time-header-cell .rbc-header': {
+      whiteSpace: 'normal',
+      overflow: 'visible',
+      alignSelf: 'stretch',
+      /* Override RBC min-height: 0 (flex shrink) so the date pill is not clipped. */
+      minHeight: 'auto',
+      boxSizing: 'border-box',
+    },
+    '& .rbc-time-header-cell .rbc-header .rbc-button-link': {
+      overflow: 'visible',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 'auto',
+    },
+    '& .rbc-time-header-cell .rbc-header.rbc-today': {
+      ...(!cal.isDark && { backgroundColor: '#fff' }),
+    },
+    '& .rbc-month-header .rbc-header + .rbc-header': {
+      borderLeft: `1px solid ${cal.border}`,
     },
     '& .rbc-month-view, & .rbc-time-view': {
       border: `1px solid ${cal.border}`,
@@ -38,13 +82,22 @@ export function getBigCalendarAreaSx({ theme, cal }) {
     '& .rbc-off-range-bg': {
       backgroundColor: cal.offRangeBg,
     },
-    '& .rbc-today': {
+    '& .rbc-month-view .rbc-day-bg.rbc-today': {
       backgroundColor: cal.isDark
         ? alpha(theme.palette.primary.main, 0.12)
-        : alpha(theme.palette.primary.main, 0.06),
+        : alpha(theme.palette.primary.main, 0.08),
+    },
+    '& .rbc-time-view .rbc-day-bg.rbc-today': {
+      ...(!cal.isDark && { backgroundColor: '#fff' }),
     },
     '& .rbc-time-header-content .rbc-header': {
       borderBottom: `1px solid ${cal.border}`,
+    },
+    '& .rbc-time-header': {
+      overflow: 'visible',
+    },
+    '& .rbc-time-header-content': {
+      overflow: 'visible',
     },
     '& .rbc-time-content, & .rbc-day-slot .rbc-background-event': {
       borderTop: `1px solid ${cal.border}`,
@@ -89,6 +142,8 @@ export function getBigCalendarAreaSx({ theme, cal }) {
       lineHeight: 1.25,
       color: 'inherit',
       whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
       overflow: 'hidden',
     },
     '& .rbc-current-time-indicator': {
@@ -116,6 +171,8 @@ export function getBigCalendarAreaSx({ theme, cal }) {
       lineHeight: 1.25,
       color: 'inherit',
       whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
       overflow: 'hidden',
     },
     '& .rbc-agenda-view .rbc-event-label': {
