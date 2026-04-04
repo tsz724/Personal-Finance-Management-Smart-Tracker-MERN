@@ -622,8 +622,16 @@ export function useCalendarPage() {
 
   const confirmRecurringMove = async () => {
     if (!pendingRecurringMove) return;
-    const { eventId, instanceStartIso, nextStart, nextEnd, isAllDay, resourceSnapshot } =
-      pendingRecurringMove;
+    const {
+      eventId,
+      instanceStartIso,
+      nextStart,
+      nextEnd,
+      isAllDay,
+      resourceSnapshot,
+      originalStartMs,
+      originalEndMs,
+    } = pendingRecurringMove;
     const scope =
       editRecurringMoveScope === 'this'
         ? 'single'
@@ -631,12 +639,24 @@ export function useCalendarPage() {
           ? 'following'
           : 'all';
     const ev = resourceSnapshot;
+    const nextAllDay = typeof isAllDay === 'boolean' ? isAllDay : !!ev.allDay;
+    const prevAllDay = !!(ev.allDay ?? false);
+    if (
+      typeof originalStartMs === 'number' &&
+      typeof originalEndMs === 'number' &&
+      new Date(nextStart).getTime() === originalStartMs &&
+      new Date(nextEnd).getTime() === originalEndMs &&
+      nextAllDay === prevAllDay
+    ) {
+      closeRecurringMoveDialog();
+      return;
+    }
     const payload = {
       title: String(ev.title || '').trim() || 'Untitled',
       description: ev.description || '',
       start: nextStart,
       end: nextEnd,
-      allDay: typeof isAllDay === 'boolean' ? isAllDay : !!ev.allDay,
+      allDay: nextAllDay,
       location: ev.location || '',
       eventType: ev.eventType || 'meeting',
       visibility: ev.visibility || 'personal',
@@ -724,6 +744,18 @@ export function useCalendarPage() {
 
       const normalizedEnd = en <= s ? new Date(s.getTime() + 60 * 60 * 1000) : en;
 
+      const prevAllDay = !!(rbcEvent.allDay ?? ev.allDay);
+      const nextAllDay = typeof isAllDay === 'boolean' ? isAllDay : !!ev.allDay;
+      const oldStart = new Date(rbcEvent.start).getTime();
+      const oldEnd = new Date(rbcEvent.end).getTime();
+      if (
+        oldStart === s.getTime() &&
+        oldEnd === normalizedEnd.getTime() &&
+        prevAllDay === nextAllDay
+      ) {
+        return;
+      }
+
       const payload = {
         title: String(ev.title || '').trim() || 'Untitled',
         description: ev.description || '',
@@ -765,6 +797,19 @@ export function useCalendarPage() {
     const en = new Date(end);
     if (!Number.isFinite(s.getTime()) || !Number.isFinite(en.getTime())) return;
     const normalizedEnd = en <= s ? new Date(s.getTime() + 60 * 60 * 1000) : en;
+
+    const prevAllDay = !!(event.allDay ?? ev.allDay);
+    const nextAllDay = typeof isAllDay === 'boolean' ? isAllDay : !!ev.allDay;
+    const oldStart = new Date(event.start).getTime();
+    const oldEnd = new Date(event.end).getTime();
+    if (
+      oldStart === s.getTime() &&
+      oldEnd === normalizedEnd.getTime() &&
+      prevAllDay === nextAllDay
+    ) {
+      return;
+    }
+
     const instanceStart = new Date(ev.start != null ? ev.start : event.start);
     setPendingRecurringMove({
       eventId: ev._id,
@@ -773,6 +818,8 @@ export function useCalendarPage() {
       nextEnd: normalizedEnd.toISOString(),
       isAllDay,
       resourceSnapshot: { ...ev },
+      originalStartMs: new Date(event.start).getTime(),
+      originalEndMs: new Date(event.end).getTime(),
     });
     setEditRecurringMoveScope('this');
     setEditRecurringMoveOpen(true);
